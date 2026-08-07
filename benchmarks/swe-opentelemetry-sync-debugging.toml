@@ -1,0 +1,5 @@
+[qurtail]
+mode = "dots"
+dot_every = 10
+similarity = 0.90
+message_field = "body.stringValue"

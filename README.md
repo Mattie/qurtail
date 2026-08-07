@@ -154,9 +154,9 @@ qurtail -x /path/to/narrow_config.toml -f my.log
 
 We created benchmark cases of the most common log formats and compared naive `tail` and `qurtail` follows-- the goal is to compare the number of tokens used while an agent focuses on a specific task as well as context-relevant error/warning conditions.
 
-Each benchmark explains the SWE/IT/DBA agentic development, fix, troubleshooting, or debugging task it is trying to perform on behalf of the user. Each includes the intelligent config it created for qurtail for its specific needs in that scenario. The run is compared with a naive tail follow as well as a tail/grep follow to show the difference in token usage and improved outcomes.
+Each benchmark (3x of each type) explains the SWE/IT/DBA agentic development, fix, troubleshooting, or debugging task it is trying to perform on behalf of the user. Each includes the intelligent config it created for qurtail for its specific needs in that scenario. The run is compared with a naive tail follow as well as a tail/grep follow to show the difference in token usage and improved outcomes. 
 
-See the benchmark results in the MD files in the `benchmarks` folder.
+See the benchmark results in the MD files in the `benchmarks` folder. 
 
 ## Skills
 

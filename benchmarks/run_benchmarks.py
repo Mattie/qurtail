@@ -11,20 +11,6 @@ import re
 import sys
 from typing import Callable
 
-try:
-    import tomllib
-except ModuleNotFoundError:
-    import tomli as tomllib
-
-try:
-    import tiktoken
-except ImportError as error:
-    raise SystemExit(
-        "Install benchmark dependencies with "
-        "'python -m pip install -r benchmarks/requirements.txt'."
-    ) from error
-
-
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -36,6 +22,10 @@ BENCHMARKS_PATH = ROOT / "benchmarks"
 ENCODING_NAME = "o200k_base"
 REPEATS_BEFORE_FAILURE = 120
 REPEATS_AFTER_FAILURE = 30
+DEPENDENCY_HELP = (
+    "Install benchmark dependencies with "
+    "'python -m pip install -r benchmarks/requirements.txt'."
+)
 
 
 @dataclass(frozen=True)
@@ -74,6 +64,47 @@ SCENARIOS = (
         },
     ),
     Scenario(
+        slug="swe-pino-cache-debugging",
+        title="SWE Pino cache refresh debugging",
+        role="Software engineer",
+        task=(
+            "Follow a JSON application stream while retaining the error-level cache refresh "
+            "event that looks nearly identical to ordinary successful refreshes."
+        ),
+        case_name="pino-json",
+        grep_pattern=r'"level":[5-9][0-9]|error|fatal|panic',
+        variation_pattern=r"key=\d+",
+        variation_template="key={number}",
+        options={
+            "mode": "dots",
+            "dot_every": 10,
+            "similarity": 0.90,
+            "message_field": "msg",
+        },
+    ),
+    Scenario(
+        slug="swe-opentelemetry-sync-debugging",
+        title="SWE OpenTelemetry sync debugging",
+        role="Software engineer",
+        task=(
+            "Follow flattened OpenTelemetry records while preserving the error severity "
+            "transition in a repetitive background synchronization task."
+        ),
+        case_name="opentelemetry-json",
+        grep_pattern=(
+            r'"severityText":"(Error|Fatal)"|'
+            r'"severityNumber":(1[7-9]|2[0-4])|error|fatal'
+        ),
+        variation_pattern=r"page=\d+",
+        variation_template="page={number}",
+        options={
+            "mode": "dots",
+            "dot_every": 10,
+            "similarity": 0.90,
+            "message_field": "body.stringValue",
+        },
+    ),
+    Scenario(
         slug="it-kubernetes-troubleshooting",
         title="IT Kubernetes rollout troubleshooting",
         role="IT operator",
@@ -91,6 +122,43 @@ SCENARIOS = (
             "similarity": 0.90,
             "ignore_timestamps": True,
             "ignore_prefixes": ("stdout F", "stderr F"),
+        },
+    ),
+    Scenario(
+        slug="it-syslog-queue-troubleshooting",
+        title="IT syslog queue troubleshooting",
+        role="IT operator",
+        task=(
+            "Follow repetitive RFC 5424 queue polling while retaining the priority change "
+            "that signals an operational fault."
+        ),
+        case_name="rfc5424-syslog",
+        grep_pattern=r"^<1[0-3]>",
+        variation_pattern=r"batch=\d+",
+        variation_template="batch={number}",
+        options={
+            "mode": "dots",
+            "dot_every": 10,
+            "similarity": 0.92,
+        },
+    ),
+    Scenario(
+        slug="it-windows-service-troubleshooting",
+        title="IT Windows service troubleshooting",
+        role="IT operator",
+        task=(
+            "Follow projected Windows events while preserving the error heartbeat needed to "
+            "identify a failing application service."
+        ),
+        case_name="windows-event-json",
+        grep_pattern=r'"LevelDisplayName":"(Error|Critical)"|"Id":1001',
+        variation_pattern=r"batch=\d+",
+        variation_template="batch={number}",
+        options={
+            "mode": "dots",
+            "dot_every": 10,
+            "similarity": 0.90,
+            "message_field": "Message",
         },
     ),
     Scenario(
@@ -112,7 +180,66 @@ SCENARIOS = (
             "message_field": "log",
         },
     ),
+    Scenario(
+        slug="dba-python-lock-diagnosis",
+        title="DBA Python database lock diagnosis",
+        role="Database administrator",
+        task=(
+            "Follow repetitive Python worker progress while retaining the teardown failure "
+            "that reports a locked database."
+        ),
+        case_name="python-logging",
+        grep_pattern=r"ERROR|CRITICAL|database is locked|deadlock|timeout",
+        variation_pattern=r"shard \d+",
+        variation_template="shard {number}",
+        options={
+            "mode": "dots",
+            "dot_every": 10,
+            "similarity": 0.90,
+            "ignore_timestamps": True,
+        },
+    ),
+    Scenario(
+        slug="dba-journal-filesystem-diagnosis",
+        title="DBA journal filesystem diagnosis",
+        role="Database administrator",
+        task=(
+            "Follow routine journal traffic while retaining the filesystem write error that "
+            "threatens the application database."
+        ),
+        case_name="linux-journal-short-iso",
+        grep_pattern=r"kernel:|EXT4|I/O error|database",
+        variation_pattern=r"key=\d+",
+        variation_template="key={number}",
+        options={
+            "mode": "dots",
+            "dot_every": 10,
+            "similarity": 0.90,
+            "ignore_timestamps": True,
+        },
+    ),
 )
+
+
+def _load_tiktoken():
+    """Load the optional tokenizer used only for benchmark report generation."""
+    try:
+        import tiktoken
+    except ImportError as error:
+        raise SystemExit(DEPENDENCY_HELP) from error
+    return tiktoken
+
+
+def _validate_toml(config: str) -> None:
+    """Validate generated config with the standard library or its Python 3.10 backport."""
+    try:
+        import tomllib
+    except ModuleNotFoundError:
+        try:
+            import tomli as tomllib
+        except ImportError as error:
+            raise SystemExit(DEPENDENCY_HELP) from error
+    tomllib.loads(config)
 
 
 def _load_cases() -> dict[str, dict[str, object]]:
@@ -193,7 +320,7 @@ def _format_config(options: dict[str, object]) -> str:
             rendered = str(value)
         lines.append(f"{name} = {rendered}")
     config = "\n".join(lines)
-    tomllib.loads(config)
+    _validate_toml(config)
     return config
 
 
@@ -206,6 +333,7 @@ def _render_report(
     scenario: Scenario,
     case: dict[str, object],
     count_tokens: Callable[[str], int],
+    tokenizer_version: str,
 ) -> str:
     """Render one benchmark scenario and its measured outcomes."""
     lines, baseline, failure = _stream(case, scenario)
@@ -279,7 +407,7 @@ The benchmark runner applies the equivalent finite-stream selection and compress
 
 ## Results
 
-Tokenizer: `tiktoken {tiktoken.__version__}`, encoding `{ENCODING_NAME}`.
+Tokenizer: `tiktoken {tokenizer_version}`, encoding `{ENCODING_NAME}`.
 
 | Method | Output lines | Tokens | Token reduction vs tail | Baseline context | Recurrence visible | Failure retained |
 | --- | ---: | ---: | ---: | --- | --- | --- |
@@ -296,6 +424,7 @@ Reproduce with `python benchmarks/run_benchmarks.py` after installing `benchmark
 def _artifacts() -> dict[Path, str]:
     """Generate every report and reusable override from the current implementation."""
     cases = _load_cases()
+    tiktoken = _load_tiktoken()
     tokenizer = tiktoken.get_encoding(ENCODING_NAME)
 
     def count_tokens(text: str) -> int:
@@ -304,7 +433,10 @@ def _artifacts() -> dict[Path, str]:
     artifacts = {}
     for scenario in SCENARIOS:
         artifacts[BENCHMARKS_PATH / f"{scenario.slug}.md"] = _render_report(
-            scenario, cases[scenario.case_name], count_tokens
+            scenario,
+            cases[scenario.case_name],
+            count_tokens,
+            tiktoken.__version__,
         )
         artifacts[BENCHMARKS_PATH / f"{scenario.slug}.toml"] = (
             _format_config(scenario.options) + "\n"
