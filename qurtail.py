@@ -7,6 +7,7 @@ from collections import deque
 import configparser
 from difflib import SequenceMatcher
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -19,7 +20,7 @@ DEFAULT_HISTORY_SIZE = 100
 DEFAULT_SIMILARITY = 0.85
 DEFAULT_TAIL_LINES = 10
 DEFAULT_SPINNER = "|/-\\"
-RC_FILE_NAME = ".smartytailrc"
+RC_FILE_NAME = ".qurtailrc"
 
 ANSI_COLORS = {
     "black": 30,
@@ -109,7 +110,30 @@ def _colorize(text: str, color: str | None, enabled: bool) -> str:
     return f"\x1b[{ANSI_COLORS[color]}m{text}\x1b[0m"
 
 
-class SmartTail:
+def _parse_rotate_sample(value: object) -> tuple[int | None, float | None]:
+    """Parse a repeat-sampling interval expressed as lines or suffixed seconds."""
+    if value is None:
+        return None, None
+
+    text = str(value).strip().casefold()
+    try:
+        if text.endswith("s"):
+            seconds = float(text[:-1])
+            if not math.isfinite(seconds) or seconds <= 0:
+                raise ValueError
+            return None, seconds
+
+        count = int(text)
+        if count <= 0:
+            raise ValueError
+        return count, None
+    except ValueError as error:
+        raise ValueError(
+            "rotate_sample must be a positive line count or duration such as '10s'"
+        ) from error
+
+
+class QurTail:
     """Write novel lines in full and represent similar recent lines with a marker."""
 
     def __init__(
@@ -131,6 +155,7 @@ class SmartTail:
         include_regex: str | None = None,
         exclude_regex: str | None = None,
         comparison_lines: Iterable[str] = (),
+        rotate_sample: str | int | None = None,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         if not 0 <= similarity <= 1:
@@ -151,6 +176,9 @@ class SmartTail:
             exclude_pattern = re.compile(exclude_regex) if exclude_regex else None
         except re.error as error:
             raise ValueError(f"invalid filter regex: {error}") from error
+        rotate_sample_count, rotate_sample_seconds = _parse_rotate_sample(
+            rotate_sample
+        )
 
         self._output = output
         self._similarity = similarity
@@ -172,6 +200,8 @@ class SmartTail:
         self._message_field = message_field
         self._include_pattern = include_pattern
         self._exclude_pattern = exclude_pattern
+        self._rotate_sample_count = rotate_sample_count
+        self._rotate_sample_seconds = rotate_sample_seconds
         self._references = tuple(
             self._comparable(line.rstrip("\r\n")) for line in comparison_lines
         )
@@ -214,6 +244,23 @@ class SmartTail:
             if not self._markers_open:
                 self._repeat_started = now
             self._repeat_count += 1
+            sample_due = (
+                self._rotate_sample_count is not None
+                and self._repeat_count >= self._rotate_sample_count
+            ) or (
+                self._rotate_sample_seconds is not None
+                and now - self._repeat_started >= self._rotate_sample_seconds
+            )
+            if sample_due:
+                if self._markers_open:
+                    self._output.write("\n")
+                self._output.write(printable + "\n")
+                self._output.flush()
+                self._markers_open = False
+                self._spinner_index = 0
+                self._repeat_count = 0
+                return
+
             if self._mode == "spinner":
                 if self._markers_open:
                     self._output.write("\b")
@@ -257,13 +304,13 @@ class SmartTail:
 
 def compress(lines: Iterable[str], output: TextIO, **options: object) -> None:
     """Compress a finite iterable of lines into the provided text stream."""
-    tail = SmartTail(output, **options)
+    tail = QurTail(output, **options)
     for line in lines:
         tail.process(line)
     tail.finish()
 
 
-def _follow_file(path: Path, tail: SmartTail, poll_interval: float) -> None:
+def _follow_file(path: Path, tail: QurTail, poll_interval: float) -> None:
     """Follow a path across appends, truncation, disappearance, and replacement."""
     source: TextIO | None = None
     first_open = True
@@ -338,7 +385,7 @@ def _rc_prefixes(value: str) -> tuple[str, ...]:
 
 
 def _load_rc(path: Path) -> dict[str, object]:
-    """Load supported options from a smartytail rc file when it exists."""
+    """Load supported options from a qurtail rc file when it exists."""
     if not path.exists():
         return {}
 
@@ -346,10 +393,10 @@ def _load_rc(path: Path) -> dict[str, object]:
     with path.open("r", encoding="utf-8") as source:
         config.read_file(source)
 
-    if "smartytail" not in config:
-        raise ValueError("rc file must contain a [smartytail] section")
+    if "qurtail" not in config:
+        raise ValueError("rc file must contain a [qurtail] section")
 
-    section = config["smartytail"]
+    section = config["qurtail"]
     converters = {
         "similarity": float,
         "history": int,
@@ -367,6 +414,7 @@ def _load_rc(path: Path) -> dict[str, object]:
         "ignore_fields": _rc_prefixes,
         "message_field": str,
         "comparison_file": Path,
+        "rotate_sample": str,
     }
     unknown = set(section) - set(converters)
     if unknown:
@@ -386,7 +434,7 @@ def _load_rc(path: Path) -> dict[str, object]:
 
 def _build_parser(defaults: dict[str, object], config_path: Path) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="smartytail",
+        prog="qurtail",
         description="Follow text while compacting lines similar to recent output.",
     )
     parser.add_argument("file", nargs="?", help="file to read; stdin when omitted")
@@ -496,6 +544,12 @@ def _build_parser(defaults: dict[str, object], config_path: Path) -> argparse.Ar
         help="suppress lines similar to entries in this reference file",
     )
     parser.add_argument(
+        "--rotate-sample",
+        default=defaults.get("rotate_sample"),
+        metavar="N|SECONDSs",
+        help="print every Nth repeat, or sample by time with a value such as 10s",
+    )
+    parser.add_argument(
         "--poll-interval",
         type=float,
         default=defaults.get("poll_interval", 0.2),
@@ -506,13 +560,13 @@ def _build_parser(defaults: dict[str, object], config_path: Path) -> argparse.Ar
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run the smartytail command and return its process exit status."""
+    """Run the qurtail command and return its process exit status."""
     arguments = sys.argv[1:] if argv is None else argv
     config_path = _config_path(arguments)
     try:
         defaults = _load_rc(config_path)
     except (OSError, configparser.Error, ValueError) as error:
-        raise SystemExit(f"smartytail: {config_path}: {error}") from error
+        raise SystemExit(f"qurtail: {config_path}: {error}") from error
 
     parser = _build_parser(defaults, config_path)
     args = parser.parse_args(arguments)
@@ -539,10 +593,10 @@ def main(argv: list[str] | None = None) -> int:
                 encoding="utf-8", errors="replace"
             ).splitlines()
         except OSError as error:
-            parser.exit(1, f"smartytail: {args.comparison_file}: {error}\n")
+            parser.exit(1, f"qurtail: {args.comparison_file}: {error}\n")
 
     try:
-        tail = SmartTail(
+        tail = QurTail(
             sys.stdout,
             similarity=args.similarity,
             history_size=args.history,
@@ -559,6 +613,7 @@ def main(argv: list[str] | None = None) -> int:
             include_regex=args.include_regex,
             exclude_regex=args.exclude_regex,
             comparison_lines=comparison_lines,
+            rotate_sample=args.rotate_sample,
         )
     except ValueError as error:
         parser.error(str(error))
@@ -578,7 +633,7 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         pass
     except OSError as error:
-        parser.exit(1, f"smartytail: {error}\n")
+        parser.exit(1, f"qurtail: {error}\n")
     finally:
         tail.finish()
 

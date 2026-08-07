@@ -1,26 +1,30 @@
-# smartytail
+# qurtail
 
-`smartytail` is a very simple version of `tail` for noisy logs.
+*Quell Unwanted Repetition with `qurtail`*
+
+----
+
+`qurtail` is a quirky version of `tail` for noisy logs.
 
 It watches a stream of lines and compares each new line to the recent lines it has already seen.
 If a new line is very similar to an earlier one, it suppresses that full line and prints a short
-marker such as `.` instead, without adding a newline. That keeps repeated chatter visible without
+marker such as `.` instead, without adding a newline. That helps you **q**uell **u**nwanted **r**epetition without
 letting it flood the terminal.
 
-When the line is meaningfully different, `smartytail` prints the full line normally.
+When the line is meaningfully different, `qurtail` prints the full line normally.
 
 The goal is to preserve signal while compressing repetition.
 
-## Installation and usage
+## Usage and Installation
 
-Works cleanly by default in bash with `smartytail -f my.log` out of the box, no need to prefix with python.
+Works cleanly by default in bash with `qurtail -f my.log` out of the box, no need to prefix with python.
 
-It has the same defaults as `tail -f` and can be used in a pipeline, e.g. `my_command | smartytail`.
+It has the same defaults as `tail -f` and can be used in a pipeline, e.g. `my_command | qurtail`.
 
 Example:
 
 ```text
-> smartytail -f my.log
+> qurtail -f my.log
 starting worker 17
 .....
 connection reset by peer
@@ -28,11 +32,11 @@ connection reset by peer
 finished batch 42
 ```
 
-It provides help information with `smartytail -h` and can be installed locally by cloning this repo and running pip install -e . in the root directory.
+It provides help information with `qurtail -h` and can be installed locally by cloning this repo and running pip install -e . in the root directory.
 
 ### Log rotation
 
-Detect truncation, replacement, and log rotation like `tail -F`. This works automatically with `smartytail -f my.log`.
+Detect truncation, replacement, and log rotation like `tail -F`. This works automatically with `qurtail -f my.log`.
 
 ## RC Config options
 
@@ -41,19 +45,19 @@ Detect truncation, replacement, and log rotation like `tail -F`. This works auto
 #### Spinner
 It supports rc config options to include a spinning mode that rotates instead of printing a dot:
 
-**~/.smartytailrc** example:
+**~/.qurtailrc** example:
 ```toml
-[smartytail]
+[qurtail]
 mode = spinner
 spinner = |/-\
 ```
 
 #### Color customization
 
-smartytail supports color customization for the spinner and the dot marker. You can set the colors in your rc file:
+qurtail supports color customization for the spinner and the dot marker. You can set the colors in your rc file:
 
 ```toml
-[smartytail]
+[qurtail]
 spinner_color = green
 dot_color = yellow
 ```
@@ -63,7 +67,7 @@ dot_color = yellow
 Replace long dot runs with an updating summary such as `[127 similar lines, 8s]`. It preserves frequency information without terminal noise.
 
 ```toml
-[smartytail]
+[qurtail]
 mode = counts
 ```
 
@@ -73,7 +77,7 @@ mode = counts
 It also supports config options to set the similarity threshold for suppressing lines, and it recognizes many common log formats and supports rc options ignore_timestamps, ignore_levels, and comma-separated ignore_prefixes.
 
 ```toml
-[smartytail]
+[qurtail]
 similarity = 0.90
 ignore_timestamps = yes
 ignore_levels = no
@@ -86,7 +90,7 @@ poll_interval = 0.2
 It also supports regex filtering of lines to include or exclude, e.g. to only show lines that contain the word "error" or to exclude lines that contain "debug":
 
 ```toml
-[smartytail]
+[qurtail]
 include_regex = error
 exclude_regex = debug
 ```
@@ -98,7 +102,7 @@ exclude_regex = debug
 Parse JSON logs and compare selected fields, with options such as `ignore_fields = timestamp,request_id` and `message_field = msg`.
 
 ```toml
-[smartytail]
+[qurtail]
 ignore_fields = timestamp, request_id
 message_field = msg
 ```
@@ -108,8 +112,17 @@ message_field = msg
 Compare lines to a reference file and treat anything similar to the lines in those as "similar" and suppress them. This is useful for filtering out known noise from a log stream.
 
 ```toml
-[smartytail]
+[qurtail]
 comparison_file = known-noise.log
+```
+
+#### ROTATE-SAMPLE
+
+Print every Nth suppressed line or one sample every N seconds. This gives visibility into recurring traffic without restoring the flood.
+
+```toml
+[qurtail]
+rotate_sample = 10
 ```
 
 ## Bugfix Changelog

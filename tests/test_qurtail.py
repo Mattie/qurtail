@@ -1,4 +1,4 @@
-"""Tests for smartytail's documented stream compression behavior."""
+"""Tests for qurtail's documented stream compression behavior."""
 
 from io import StringIO
 import os
@@ -10,7 +10,7 @@ import tempfile
 import time
 import unittest
 
-from smartytail import compress
+from qurtail import compress
 
 
 class TerminalBuffer(StringIO):
@@ -175,6 +175,26 @@ class CompressTests(unittest.TestCase):
 
         self.assertEqual(output.getvalue(), ".\nmeaningful event\n")
 
+    def test_rotate_sample_prints_every_nth_repeat_in_full(self) -> None:
+        output = StringIO()
+
+        compress(["heartbeat\n"] * 6, output, rotate_sample=3)
+
+        self.assertEqual(output.getvalue(), "heartbeat\n..\nheartbeat\n..\n")
+
+    def test_rotate_sample_can_use_a_seconds_interval(self) -> None:
+        output = StringIO()
+        timestamps = iter((0.0, 4.0, 10.0))
+
+        compress(
+            ["heartbeat\n"] * 4,
+            output,
+            rotate_sample="10s",
+            clock=lambda: next(timestamps),
+        )
+
+        self.assertEqual(output.getvalue(), "heartbeat\n..\nheartbeat\n")
+
 
 class CommandTests(unittest.TestCase):
     """Check that the command can process a file from end to end."""
@@ -188,7 +208,7 @@ class CommandTests(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "smartytail",
+                    "qurtail",
                     "--config",
                     str(Path(directory, "missing.rc")),
                     str(path),
@@ -210,7 +230,7 @@ class CommandTests(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "smartytail",
+                    "qurtail",
                     "--config",
                     str(Path(directory, "missing.rc")),
                     str(path),
@@ -226,8 +246,8 @@ class CommandTests(unittest.TestCase):
     def test_rc_enables_spinner_and_cli_can_override_it(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
-            Path(home, ".smartytailrc").write_text(
-                "[smartytail]\n"
+            Path(home, ".qurtailrc").write_text(
+                "[qurtail]\n"
                 "mode = spinner\n"
                 "spinner = ab\n"
                 "spinner_color = green\n"
@@ -249,7 +269,7 @@ class CommandTests(unittest.TestCase):
             environment["USERPROFILE"] = str(home)
 
             configured = subprocess.run(
-                [sys.executable, "-m", "smartytail", str(path)],
+                [sys.executable, "-m", "qurtail", str(path)],
                 env=environment,
                 check=False,
                 capture_output=True,
@@ -259,7 +279,7 @@ class CommandTests(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "smartytail",
+                    "qurtail",
                     "--mode",
                     "dots",
                     "--marker",
@@ -288,8 +308,8 @@ class CommandTests(unittest.TestCase):
     def test_rc_can_set_similarity_threshold(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
-            Path(home, ".smartytailrc").write_text(
-                "[smartytail]\nsimilarity = 1.0\n",
+            Path(home, ".qurtailrc").write_text(
+                "[qurtail]\nsimilarity = 1.0\n",
                 encoding="utf-8",
             )
             path = Path(home, "input.log")
@@ -299,7 +319,7 @@ class CommandTests(unittest.TestCase):
             environment["USERPROFILE"] = str(home)
 
             result = subprocess.run(
-                [sys.executable, "-m", "smartytail", str(path)],
+                [sys.executable, "-m", "qurtail", str(path)],
                 env=environment,
                 check=False,
                 capture_output=True,
@@ -312,8 +332,8 @@ class CommandTests(unittest.TestCase):
     def test_rc_can_configure_json_comparison(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
-            Path(home, ".smartytailrc").write_text(
-                "[smartytail]\nignore_fields = timestamp, request_id\n",
+            Path(home, ".qurtailrc").write_text(
+                "[qurtail]\nignore_fields = timestamp, request_id\n",
                 encoding="utf-8",
             )
             path = Path(home, "input.log")
@@ -327,7 +347,7 @@ class CommandTests(unittest.TestCase):
             environment["USERPROFILE"] = str(home)
 
             result = subprocess.run(
-                [sys.executable, "-m", "smartytail", str(path)],
+                [sys.executable, "-m", "qurtail", str(path)],
                 env=environment,
                 check=False,
                 capture_output=True,
@@ -340,8 +360,8 @@ class CommandTests(unittest.TestCase):
     def test_rc_can_enable_counts_mode(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
-            Path(home, ".smartytailrc").write_text(
-                "[smartytail]\nmode = counts\n",
+            Path(home, ".qurtailrc").write_text(
+                "[qurtail]\nmode = counts\n",
                 encoding="utf-8",
             )
             path = Path(home, "input.log")
@@ -351,7 +371,7 @@ class CommandTests(unittest.TestCase):
             environment["USERPROFILE"] = str(home)
 
             result = subprocess.run(
-                [sys.executable, "-m", "smartytail", str(path)],
+                [sys.executable, "-m", "qurtail", str(path)],
                 env=environment,
                 check=False,
                 capture_output=True,
@@ -361,11 +381,35 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, "same\n[1 similar line, 0s]\n")
 
+    def test_rc_can_rotate_every_nth_suppressed_line(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            Path(home, ".qurtailrc").write_text(
+                "[qurtail]\nrotate_sample = 2\n",
+                encoding="utf-8",
+            )
+            path = Path(home, "input.log")
+            path.write_text("same\nsame\nsame\nsame\n", encoding="utf-8")
+            environment = os.environ.copy()
+            environment["HOME"] = str(home)
+            environment["USERPROFILE"] = str(home)
+
+            result = subprocess.run(
+                [sys.executable, "-m", "qurtail", str(path)],
+                env=environment,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "same\n.\nsame\n.\n")
+
     def test_rc_comparison_file_is_relative_to_the_rc_file(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
-            Path(home, ".smartytailrc").write_text(
-                "[smartytail]\ncomparison_file = known.log\n",
+            Path(home, ".qurtailrc").write_text(
+                "[qurtail]\ncomparison_file = known.log\n",
                 encoding="utf-8",
             )
             Path(home, "known.log").write_text("known noise 123\n", encoding="utf-8")
@@ -376,7 +420,7 @@ class CommandTests(unittest.TestCase):
             environment["USERPROFILE"] = str(home)
 
             result = subprocess.run(
-                [sys.executable, "-m", "smartytail", str(path)],
+                [sys.executable, "-m", "qurtail", str(path)],
                 env=environment,
                 check=False,
                 capture_output=True,
@@ -393,7 +437,7 @@ class CommandTests(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "smartytail",
+                    "qurtail",
                     "--config",
                     str(Path(directory, "missing.rc")),
                     "--comparison-file",
@@ -411,8 +455,8 @@ class CommandTests(unittest.TestCase):
     def test_rc_and_cli_regex_filters(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
-            Path(home, ".smartytailrc").write_text(
-                "[smartytail]\ninclude_regex = error\nexclude_regex = debug\n",
+            Path(home, ".qurtailrc").write_text(
+                "[qurtail]\ninclude_regex = error\nexclude_regex = debug\n",
                 encoding="utf-8",
             )
             path = Path(home, "input.log")
@@ -428,7 +472,7 @@ class CommandTests(unittest.TestCase):
             environment["USERPROFILE"] = str(home)
 
             configured = subprocess.run(
-                [sys.executable, "-m", "smartytail", str(path)],
+                [sys.executable, "-m", "qurtail", str(path)],
                 env=environment,
                 check=False,
                 capture_output=True,
@@ -438,7 +482,7 @@ class CommandTests(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "smartytail",
+                    "qurtail",
                     "--include-regex",
                     "info",
                     "--exclude-regex",
@@ -467,7 +511,7 @@ class CommandTests(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "smartytail",
+                    "qurtail",
                     "--config",
                     str(Path(directory, "missing.rc")),
                     "--ignore-prefixes",
@@ -487,7 +531,7 @@ class CommandTests(unittest.TestCase):
             [
                 sys.executable,
                 "-m",
-                "smartytail",
+                "qurtail",
                 "--config",
                 "missing.rc",
                 "--include-regex",
@@ -501,6 +545,28 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("invalid filter regex", result.stderr)
         self.assertNotIn("Traceback", result.stderr)
+
+    def test_invalid_rotate_sample_reports_a_cli_error(self) -> None:
+        for value in ("0", "nans"):
+            with self.subTest(value=value):
+                result = subprocess.run(
+                    [
+                        sys.executable,
+                        "-m",
+                        "qurtail",
+                        "--config",
+                        "missing.rc",
+                        "--rotate-sample",
+                        value,
+                    ],
+                    check=False,
+                    capture_output=True,
+                    text=True,
+                )
+
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("rotate_sample must be a positive", result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
 
     @unittest.skipUnless(
         sys.platform != "win32" and shutil.which("bash"),
@@ -551,7 +617,7 @@ class CommandTests(unittest.TestCase):
                 [
                     shutil.which("bash"),
                     "-c",
-                    'printf "ready 1\\nready 2\\nfailed\\n" | smartytail',
+                    'printf "ready 1\\nready 2\\nfailed\\n" | qurtail',
                 ],
                 env=shell_environment,
                 check=False,
@@ -564,14 +630,14 @@ class CommandTests(unittest.TestCase):
             path = Path(directory, "my.log")
             path.write_text("\n".join("abcdefghijkl") + "\n", encoding="utf-8")
             help_result = subprocess.run(
-                [shutil.which("bash"), "-c", "smartytail -h"],
+                [shutil.which("bash"), "-c", "qurtail -h"],
                 env=shell_environment,
                 check=False,
                 capture_output=True,
                 text=True,
             )
             self.assertEqual(help_result.returncode, 0, help_result.stderr)
-            self.assertIn("usage: smartytail", help_result.stdout)
+            self.assertIn("usage: qurtail", help_result.stdout)
             self.assertIn("--follow", help_result.stdout)
             self.assertIn("--config", help_result.stdout)
             self.assertIn("--mode", help_result.stdout)
@@ -585,13 +651,14 @@ class CommandTests(unittest.TestCase):
             self.assertIn("--ignore-field", help_result.stdout)
             self.assertIn("--message-field", help_result.stdout)
             self.assertIn("--comparison-file", help_result.stdout)
+            self.assertIn("--rotate-sample", help_result.stdout)
 
             process = subprocess.Popen(
                 [
                     shutil.which("bash"),
                     "-c",
-                    'exec smartytail -f "$1"',
-                    "smartytail-test",
+                    'exec qurtail -f "$1"',
+                    "qurtail-test",
                     str(path),
                 ],
                 env=shell_environment,
@@ -630,7 +697,7 @@ class CommandTests(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "smartytail",
+                    "qurtail",
                     "--config",
                     str(Path(directory, "missing.rc")),
                     "-f",
