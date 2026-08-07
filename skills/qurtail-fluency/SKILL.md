@@ -16,17 +16,45 @@ Keep enough output to notice failures while preventing recurring development log
 
 Prefer `mode = dots` for output another agent will read. Use `dot_every` to reduce marker volume.
 
+## Preview before suppressing
+
+Inspect a bounded, unsuppressed sample before choosing rules for a new stream:
+
+```bash
+tail -n 200 app.log > qurtail-preview.log
+```
+
+Find the changing timestamps, identifiers, prefixes, and JSON fields, along with real warning, error, and 4xx/5xx examples. Build rules from observed lines and leave `ignore_levels = no` unless the sample proves that level changes are noise.
+
+Keep shared defaults in a base config and put workload-specific rules in a narrow override:
+
+```toml
+[qurtail]
+message_field = "msg"
+dot_every = 10
+rotate_sample = 50
+```
+
+Replay the sample before following the live file:
+
+```bash
+qurtail -c ~/.qurtailrc -x ./qurtail-workload.toml < qurtail-preview.log
+qurtail -c ~/.qurtailrc -x ./qurtail-workload.toml -f app.log
+```
+
+Confirm that every observed warning, error, and error-status line remains visible. Extra configs apply left to right, and explicit CLI options apply last, so add another `-x` for a narrower incident rule and keep the base config shared.
+
 ## Start conservative
 
 Use a configuration like this:
 
 ```toml
 [qurtail]
-mode = dots
+mode = "dots"
 dot_every = 10
 similarity = 0.90
-ignore_timestamps = yes
-ignore_levels = no
+ignore_timestamps = true
+ignore_levels = false
 rotate_sample = 50
 ```
 
@@ -42,7 +70,7 @@ For newline-delimited JSON, compare the stable message body:
 
 ```toml
 [qurtail]
-message_field = msg
+message_field = "msg"
 ```
 
 Use `msg` for Pino, `Message` for .NET JSON or projected Windows events, and `log` for saved Docker json-file records. For a flattened OpenTelemetry record, use `body` when it is a string or a dotted path such as `body.stringValue` when it carries a typed value.
@@ -60,8 +88,8 @@ For copied Kubernetes CRI records, remove the stream wrapper:
 
 ```toml
 [qurtail]
-ignore_timestamps = yes
-ignore_prefixes = stdout F, stderr F
+ignore_timestamps = true
+ignore_prefixes = "stdout F, stderr F"
 ```
 
 Use a high threshold such as `similarity = 0.95` for fixed-width web access logs, then verify that error responses remain visible.

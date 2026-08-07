@@ -612,12 +612,19 @@ def _follow_file(path: Path, tail: QurTail, poll_interval: float) -> None:
             source.close()
 
 
-def _config_path(argv: list[str]) -> Path:
-    """Resolve the rc path before parsing options that may receive rc defaults."""
+def _config_paths(argv: list[str]) -> tuple[Path, tuple[Path, ...]]:
+    """Resolve layered rc paths before parsing options that use their defaults."""
     parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--config", type=Path, default=Path.home() / RC_FILE_NAME)
+    parser.add_argument(
+        "-c", "--config", type=Path, default=Path.home() / RC_FILE_NAME
+    )
+    parser.add_argument("-x", "--extra-config", action="append", type=Path, default=[])
+    parser.add_argument("-f", "--follow", action="store_true")
     args, _ = parser.parse_known_args(argv)
-    return args.config.expanduser()
+    return (
+        args.config.expanduser(),
+        tuple(path.expanduser() for path in args.extra_config),
+    )
 
 
 def _rc_bool(value: str) -> bool:
@@ -630,9 +637,25 @@ def _rc_bool(value: str) -> bool:
     raise ValueError(f"expected a boolean, got {value!r}")
 
 
+def _rc_string(value: str) -> str:
+    """Parse an unquoted rc value or a TOML-compatible quoted string."""
+    stripped = value.strip()
+    if len(stripped) >= 2 and stripped.startswith('"') and stripped.endswith('"'):
+        try:
+            parsed = json.loads(stripped)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"invalid quoted string: {error.msg}") from error
+        if isinstance(parsed, str):
+            return parsed
+    if len(stripped) >= 2 and stripped.startswith("'") and stripped.endswith("'"):
+        return stripped[1:-1]
+    return value
+
+
 def _rc_prefixes(value: str) -> tuple[str, ...]:
     """Parse a comma-separated list of literal prefixes."""
-    return tuple(prefix.strip() for prefix in value.split(",") if prefix.strip())
+    unquoted = _rc_string(value)
+    return tuple(prefix.strip() for prefix in unquoted.split(",") if prefix.strip())
 
 
 def _load_rc(path: Path) -> dict[str, object]:
@@ -651,22 +674,22 @@ def _load_rc(path: Path) -> dict[str, object]:
     converters = {
         "similarity": float,
         "history": int,
-        "marker": str,
-        "mode": str,
-        "spinner": str,
-        "spinner_color": str,
-        "dot_color": str,
+        "marker": _rc_string,
+        "mode": _rc_string,
+        "spinner": _rc_string,
+        "spinner_color": _rc_string,
+        "dot_color": _rc_string,
         "dot_every": int,
         "poll_interval": float,
         "ignore_timestamps": _rc_bool,
         "ignore_levels": _rc_bool,
         "ignore_prefixes": _rc_prefixes,
-        "include_regex": str,
-        "exclude_regex": str,
+        "include_regex": _rc_string,
+        "exclude_regex": _rc_string,
         "ignore_fields": _rc_prefixes,
-        "message_field": str,
-        "comparison_file": Path,
-        "rotate_sample": str,
+        "message_field": _rc_string,
+        "comparison_file": lambda value: Path(_rc_string(value)),
+        "rotate_sample": _rc_string,
     }
     unknown = set(section) - set(converters)
     if unknown:
@@ -684,7 +707,10 @@ def _load_rc(path: Path) -> dict[str, object]:
     return values
 
 
-def _build_parser(defaults: dict[str, object], config_path: Path) -> argparse.ArgumentParser:
+def _build_parser(
+    defaults: dict[str, object],
+    config_path: Path,
+) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="qurtail",
         description="Follow text while compacting lines similar to recent output.",
@@ -692,11 +718,21 @@ def _build_parser(defaults: dict[str, object], config_path: Path) -> argparse.Ar
     parser.add_argument("file", nargs="?", help="file to read; stdin when omitted")
     parser.add_argument("-f", "--follow", action="store_true", help="wait for appended file data")
     parser.add_argument(
+        "-c",
         "--config",
         type=Path,
         default=config_path,
         metavar="PATH",
         help=f"rc file (default: ~/{RC_FILE_NAME})",
+    )
+    parser.add_argument(
+        "-x",
+        "--extra-config",
+        action="append",
+        type=Path,
+        default=[],
+        metavar="PATH",
+        help="additional rc file; may be repeated and later files override earlier ones",
     )
     parser.add_argument(
         "--similarity",
@@ -821,11 +857,15 @@ def _build_parser(defaults: dict[str, object], config_path: Path) -> argparse.Ar
 def main(argv: list[str] | None = None) -> int:
     """Run the qurtail command and return its process exit status."""
     arguments = sys.argv[1:] if argv is None else argv
-    config_path = _config_path(arguments)
-    try:
-        defaults = _load_rc(config_path)
-    except (OSError, configparser.Error, ValueError) as error:
-        raise SystemExit(f"qurtail: {config_path}: {error}") from error
+    config_path, extra_config_paths = _config_paths(arguments)
+    defaults: dict[str, object] = {}
+    for path in (config_path, *extra_config_paths):
+        if path in extra_config_paths and not path.exists():
+            raise SystemExit(f"qurtail: {path}: extra config file does not exist")
+        try:
+            defaults.update(_load_rc(path))
+        except (OSError, configparser.Error, ValueError) as error:
+            raise SystemExit(f"qurtail: {path}: {error}") from error
 
     parser = _build_parser(defaults, config_path)
     args = parser.parse_args(arguments)

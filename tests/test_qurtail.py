@@ -520,6 +520,206 @@ class CommandTests(unittest.TestCase):
             "[12:35:02] WARN api: changed\n",
         )
 
+    def test_custom_and_extra_configs_cascade_before_cli_options(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = Path(root, "base.toml")
+            first_override = Path(root, "workload.toml")
+            second_override = Path(root, "local.toml")
+            path = Path(root, "input.log")
+            base.write_text(
+                "[qurtail]\nmode = spinner\nspinner = ab\n",
+                encoding="utf-8",
+            )
+            first_override.write_text(
+                "[qurtail]\nmode = dots\ndot_every = 2\nmarker = ~\n",
+                encoding="utf-8",
+            )
+            second_override.write_text(
+                "[qurtail]\nmarker = !\n",
+                encoding="utf-8",
+            )
+            path.write_text("same\nsame\nsame\nsame\n", encoding="utf-8")
+            command = [
+                sys.executable,
+                "-m",
+                "qurtail",
+                "-c",
+                str(base),
+                "-x",
+                str(first_override),
+                "-x",
+                str(second_override),
+            ]
+
+            configured = subprocess.run(
+                [*command, str(path)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            cli_override = subprocess.run(
+                [*command, "--marker", "#", str(path)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertEqual(configured.returncode, 0, configured.stderr)
+        self.assertEqual(configured.stdout, "same\n!\n")
+        self.assertEqual(cli_override.returncode, 0, cli_override.stderr)
+        self.assertEqual(cli_override.stdout, "same\n#\n")
+
+    def test_short_custom_config_option_loads_base_defaults(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = Path(root, "base.toml")
+            path = Path(root, "input.log")
+            base.write_text("[qurtail]\nsimilarity = 1.0\n", encoding="utf-8")
+            path.write_text("worker 1234\nworker 1235\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [sys.executable, "-m", "qurtail", "-c", str(base), str(path)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "worker 1234\nworker 1235\n")
+
+    def test_clustered_follow_and_config_flags_load_defaults_before_help(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = Path(root, "config.toml")
+            config.write_text("[qurtail]\nsimilarity = 0.97\n", encoding="utf-8")
+            environment = os.environ.copy()
+            environment["HOME"] = str(root)
+            environment["USERPROFILE"] = str(root)
+
+            for clustered in ("-fc", "-fx"):
+                with self.subTest(clustered=clustered):
+                    result = subprocess.run(
+                        [
+                            sys.executable,
+                            "-m",
+                            "qurtail",
+                            clustered,
+                            str(config),
+                            "--help",
+                        ],
+                        env=environment,
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                    )
+
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertIn("default: 0.97", result.stdout)
+
+    def test_config_accepts_toml_quoted_strings(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = Path(root, "config.toml")
+            path = Path(root, "input.log")
+            config.write_text(
+                "[qurtail]\n"
+                'mode = "dots"\n'
+                'marker = "~"\n'
+                "ignore_timestamps = true\n"
+                "ignore_levels = true\n"
+                'ignore_prefixes = "api:, worker:"\n',
+                encoding="utf-8",
+            )
+            path.write_text(
+                "2026-08-07T10:00:00Z INFO api: task done\n"
+                "2026-08-07T10:00:01Z ERROR worker: task done\n"
+                "2026-08-07T10:00:02Z WARN api: changed\n",
+                encoding="utf-8",
+            )
+
+            result = subprocess.run(
+                [sys.executable, "-m", "qurtail", "-c", str(config), str(path)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            result.stdout,
+            "2026-08-07T10:00:00Z INFO api: task done\n~\n"
+            "2026-08-07T10:00:02Z WARN api: changed\n",
+        )
+
+    def test_extra_config_paths_are_relative_to_their_own_file(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            override_directory = Path(root, "overrides")
+            override_directory.mkdir()
+            override = Path(override_directory, "known-noise.toml")
+            override.write_text(
+                "[qurtail]\ncomparison_file = known.log\n",
+                encoding="utf-8",
+            )
+            Path(override_directory, "known.log").write_text(
+                "known noise 123\n", encoding="utf-8"
+            )
+            path = Path(root, "input.log")
+            path.write_text("known noise 124\nmeaningful event\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "qurtail",
+                    "-c",
+                    str(Path(root, "missing.rc")),
+                    "-x",
+                    str(override),
+                    str(path),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, ".\nmeaningful event\n")
+
+    def test_invalid_extra_config_reports_its_path(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            override = Path(root, "invalid.toml")
+            override.write_text("[qurtail]\nunknown = value\n", encoding="utf-8")
+
+            result = subprocess.run(
+                [sys.executable, "-m", "qurtail", "-x", str(override)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(str(override), result.stderr)
+        self.assertIn("unknown rc option", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_missing_extra_config_reports_a_clean_error(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            missing = Path(directory, "missing.toml")
+            result = subprocess.run(
+                [sys.executable, "-m", "qurtail", "-x", str(missing)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(str(missing), result.stderr)
+        self.assertIn("extra config file does not exist", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
     def test_rc_can_set_similarity_threshold(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory)
@@ -898,7 +1098,10 @@ class CommandTests(unittest.TestCase):
             self.assertEqual(help_result.returncode, 0, help_result.stderr)
             self.assertIn("usage: qurtail", help_result.stdout)
             self.assertIn("--follow", help_result.stdout)
+            self.assertIn("-c PATH", help_result.stdout)
             self.assertIn("--config", help_result.stdout)
+            self.assertIn("-x PATH", help_result.stdout)
+            self.assertIn("--extra-config", help_result.stdout)
             self.assertIn("--mode", help_result.stdout)
             self.assertIn("--ignore-timestamps", help_result.stdout)
             self.assertIn("--ignore-prefix", help_result.stdout)

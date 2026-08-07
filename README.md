@@ -134,12 +134,37 @@ Print every Nth suppressed line or one sample every N seconds. This gives visibi
 rotate_sample = 10
 ```
 
+#### Custom Config File for Reusable Configurations
 
+You can specify a custom config file to store reusable configurations. This allows you to maintain different sets of configurations and switch between them easily via the command line.
+
+```bash
+qurtail -c /path/to/custom_config.toml -f my.log
+```
+
+##### Extra Overrides for Specific Options
+
+With support for extra cascade overrides for specific options, you can have a base configuration and override specific settings for different log files or environments. This style here leverages the local base config file but overrides only the settings that are different for this run. This is highly recommended for skills to include for their specific agentic workloads. 
+
+```bash
+qurtail -x /path/to/narrow_config.toml -f my.log
+```
+
+## Benchmarks
+
+We created benchmark cases of the most common log formats and compared naive `tail` and `qurtail` follows-- the goal is to compare the number of tokens used while an agent focuses on a specific task as well as context-relevant error/warning conditions.
+
+Each benchmark explains the SWE/IT/DBA agentic development, fix, troubleshooting, or debugging task it is trying to perform on behalf of the user. Each includes the intelligent config it created for qurtail for its specific needs in that scenario. The run is compared with a naive tail follow as well as a tail/grep follow to show the difference in token usage and improved outcomes.
+
+See the benchmark results in the MD files in the `benchmarks` folder.
+
+## Skills
+
+Included is an agentic 'qurtail fluency' skill that provides concise instructions on how to use qurtail to reduce token usage for agentic workloads better than any existing log tailing tool. The skill provides guidance on how the agent can preview log formats beforehand to intelligently build just the right suppression rules to reduce the noisy output to exactly what the agent needs to see.
 
 ## Changelog
 * Added a log corpus based on well-known log formats to test against, along with tests
 * Added preliminary support for agentic workloads by researching the most popular log formats read/awaited/monitored by working agents such as Codex, Claude Code, and ChatGPT while they are doing agentic development work on Windows, Linux, and MacOS. Added support for reducing the token counts for those most common log use cases so agents can focus on their work and still catch exceptional pieces.
-* Added an agentic 'qurtail fluency' skill that provides concise instructions on how to use qurtail to reduce token usage for agentic workloads better than any existing log tailing tool. 
 
 ## License
 MIT License
