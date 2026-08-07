@@ -40,11 +40,11 @@ class BenchmarkMatrixTests(unittest.TestCase):
 
         self.assertEqual(
             {path.stem for path in BENCHMARKS_PATH.glob("*.md")},
-            expected,
+            expected | {"codex-workload-comparison"},
         )
         self.assertEqual(
             {path.stem for path in BENCHMARKS_PATH.glob("*.toml")},
-            expected,
+            expected | {"codex-workload-replay"},
         )
 
     def test_every_scenario_retains_its_measured_signals(self) -> None:

@@ -1,0 +1,5 @@
+[qurtail]
+mode = "dots"
+dot_every = 1
+similarity = 1.0
+history = 2000

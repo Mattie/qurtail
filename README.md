@@ -156,6 +156,8 @@ We created benchmark cases of the most common log formats and compared naive `ta
 
 Each benchmark (3x of each type) explains the SWE/IT/DBA agentic development, fix, troubleshooting, or debugging task it is trying to perform on behalf of the user. Each includes the intelligent config it created for qurtail for its specific needs in that scenario. The run is compared with a naive tail follow as well as a tail/grep follow to show the difference in token usage and improved outcomes. 
 
+We even created a (sanitized) log corpus based on our own live Codex workloads from multiple projects across different technologies that leveraged tail-like cases against local logs. We reran actual agentic commands to compare the outputs to what the original agent used. We list exactly which command lines were used to monitor the log by the agents originally.
+
 See the benchmark results in the MD files in the `benchmarks` folder. 
 
 ## Skills

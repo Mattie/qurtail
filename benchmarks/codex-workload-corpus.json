@@ -1,0 +1,129 @@
+{
+  "methodology": "Commands selected from Codex task records in multiple local Git projects were run twice by this Codex task. The exact command output received by the task was sanitized, combined, and replayed through the actual qurtail CLI.",
+  "provenance": "The task records supplied command provenance and high-level success observations. Token measurements come from the fresh agent-reference and rerun executions.",
+  "sanitization": [
+    "Replace every project root, executable path, and user home with portable labels.",
+    "Strip ANSI control sequences and replace elapsed times and wall-clock starts.",
+    "Replace package banner names with a generic label.",
+    "Exclude prompts, transcript prose, task IDs, environment values, and external logs."
+  ],
+  "scope": "These captures measure fresh reruns of source commands from separate projects. They do not claim byte-for-byte identity with archived task output. Live file-follow performance and agent task completion are outside scope.",
+  "cases": [
+    {
+      "name": "compression-regression",
+      "title": "Compression regression suite",
+      "project": "qurtail",
+      "technology": "Python / unittest",
+      "purpose": "Check qurtail's comparison, filtering, severity, and display behavior.",
+      "command_source": "Codex task record",
+      "original_agent_command": "PYTHONPATH=tests python -m unittest test_qurtail.CompressTests -v",
+      "source_observation": "The source qurtail task recorded this suite passing.",
+      "success_signal": "OK",
+      "repeats": 2,
+      "runs": [
+        {
+          "role": "agent_reference",
+          "exit_code": 0,
+          "output": "test_common_timestamp_and_level_formats_can_be_ignored (test_qurtail.CompressTests.test_common_timestamp_and_level_formats_can_be_ignored) ... ok\ntest_comparison_lines_do_not_hide_a_severity_transition (test_qurtail.CompressTests.test_comparison_lines_do_not_hide_a_severity_transition) ... ok\ntest_comparison_lines_remain_persistent_known_noise (test_qurtail.CompressTests.test_comparison_lines_remain_persistent_known_noise) ... ok\ntest_counts_mode_updates_count_and_elapsed_time (test_qurtail.CompressTests.test_counts_mode_updates_count_and_elapsed_time) ... ok\ntest_dot_every_groups_suppressed_lines (test_qurtail.CompressTests.test_dot_every_groups_suppressed_lines) ... ok\ntest_exact_json_key_takes_priority_over_dotted_lookup (test_qurtail.CompressTests.test_exact_json_key_takes_priority_over_dotted_lookup) ... ok\ntest_history_only_covers_recent_lines (test_qurtail.CompressTests.test_history_only_covers_recent_lines) ... ok\ntest_http_error_status_is_shown_then_repeated_errors_are_suppressed (test_qurtail.CompressTests.test_http_error_status_is_shown_then_repeated_errors_are_suppressed) ... ok\ntest_http_status_inside_a_json_message_is_preserved (test_qurtail.CompressTests.test_http_status_inside_a_json_message_is_preserved) ... ok\ntest_json_error_payload_survives_message_field_selection (test_qurtail.CompressTests.test_json_error_payload_survives_message_field_selection) ... ok\ntest_json_fields_can_be_ignored_or_selected (test_qurtail.CompressTests.test_json_fields_can_be_ignored_or_selected) ... ok\ntest_json_http_status_outranks_normal_level (test_qurtail.CompressTests.test_json_http_status_outranks_normal_level) ... ok\ntest_json_metadata_key_does_not_hide_a_severity_change (test_qurtail.CompressTests.test_json_metadata_key_does_not_hide_a_severity_change) ... ok\ntest_json_severity_change_survives_message_field_selection (test_qurtail.CompressTests.test_json_severity_change_survives_message_field_selection) ... ok\ntest_marker_and_spinner_colors_are_terminal_only (test_qurtail.CompressTests.test_marker_and_spinner_colors_are_terminal_only) ... ok\ntest_marker_can_be_changed (test_qurtail.CompressTests.test_marker_can_be_changed) ... ok\ntest_meaningfully_different_lines_are_printed_in_full (test_qurtail.CompressTests.test_meaningfully_different_lines_are_printed_in_full) ... ok\ntest_nested_json_message_field_can_be_selected (test_qurtail.CompressTests.test_nested_json_message_field_can_be_selected) ... ok\ntest_nested_pino_response_status_is_preserved (test_qurtail.CompressTests.test_nested_pino_response_status_is_preserved) ... ok\ntest_partial_dot_group_does_not_add_blank_output (test_qurtail.CompressTests.test_partial_dot_group_does_not_add_blank_output) ... ok\ntest_readme_style_output (test_qurtail.CompressTests.test_readme_style_output) ... ok\ntest_regex_filters_run_before_similarity_tracking (test_qurtail.CompressTests.test_regex_filters_run_before_similarity_tracking) ... ok\ntest_rotate_sample_can_use_a_seconds_interval (test_qurtail.CompressTests.test_rotate_sample_can_use_a_seconds_interval) ... ok\ntest_rotate_sample_prints_every_nth_repeat_in_full (test_qurtail.CompressTests.test_rotate_sample_prints_every_nth_repeat_in_full) ... ok\ntest_rotate_sample_timer_survives_silent_dot_groups (test_qurtail.CompressTests.test_rotate_sample_timer_survives_silent_dot_groups) ... ok\ntest_severity_change_is_shown_before_repeated_errors_are_suppressed (test_qurtail.CompressTests.test_severity_change_is_shown_before_repeated_errors_are_suppressed) ... ok\ntest_spinner_rotates_in_one_terminal_cell (test_qurtail.CompressTests.test_spinner_rotates_in_one_terminal_cell) ... ok\n\n----------------------------------------------------------------------\nRan 27 tests in <elapsed>s\n\nOK"
+        },
+        {
+          "role": "rerun",
+          "exit_code": 0,
+          "output": "test_common_timestamp_and_level_formats_can_be_ignored (test_qurtail.CompressTests.test_common_timestamp_and_level_formats_can_be_ignored) ... ok\ntest_comparison_lines_do_not_hide_a_severity_transition (test_qurtail.CompressTests.test_comparison_lines_do_not_hide_a_severity_transition) ... ok\ntest_comparison_lines_remain_persistent_known_noise (test_qurtail.CompressTests.test_comparison_lines_remain_persistent_known_noise) ... ok\ntest_counts_mode_updates_count_and_elapsed_time (test_qurtail.CompressTests.test_counts_mode_updates_count_and_elapsed_time) ... ok\ntest_dot_every_groups_suppressed_lines (test_qurtail.CompressTests.test_dot_every_groups_suppressed_lines) ... ok\ntest_exact_json_key_takes_priority_over_dotted_lookup (test_qurtail.CompressTests.test_exact_json_key_takes_priority_over_dotted_lookup) ... ok\ntest_history_only_covers_recent_lines (test_qurtail.CompressTests.test_history_only_covers_recent_lines) ... ok\ntest_http_error_status_is_shown_then_repeated_errors_are_suppressed (test_qurtail.CompressTests.test_http_error_status_is_shown_then_repeated_errors_are_suppressed) ... ok\ntest_http_status_inside_a_json_message_is_preserved (test_qurtail.CompressTests.test_http_status_inside_a_json_message_is_preserved) ... ok\ntest_json_error_payload_survives_message_field_selection (test_qurtail.CompressTests.test_json_error_payload_survives_message_field_selection) ... ok\ntest_json_fields_can_be_ignored_or_selected (test_qurtail.CompressTests.test_json_fields_can_be_ignored_or_selected) ... ok\ntest_json_http_status_outranks_normal_level (test_qurtail.CompressTests.test_json_http_status_outranks_normal_level) ... ok\ntest_json_metadata_key_does_not_hide_a_severity_change (test_qurtail.CompressTests.test_json_metadata_key_does_not_hide_a_severity_change) ... ok\ntest_json_severity_change_survives_message_field_selection (test_qurtail.CompressTests.test_json_severity_change_survives_message_field_selection) ... ok\ntest_marker_and_spinner_colors_are_terminal_only (test_qurtail.CompressTests.test_marker_and_spinner_colors_are_terminal_only) ... ok\ntest_marker_can_be_changed (test_qurtail.CompressTests.test_marker_can_be_changed) ... ok\ntest_meaningfully_different_lines_are_printed_in_full (test_qurtail.CompressTests.test_meaningfully_different_lines_are_printed_in_full) ... ok\ntest_nested_json_message_field_can_be_selected (test_qurtail.CompressTests.test_nested_json_message_field_can_be_selected) ... ok\ntest_nested_pino_response_status_is_preserved (test_qurtail.CompressTests.test_nested_pino_response_status_is_preserved) ... ok\ntest_partial_dot_group_does_not_add_blank_output (test_qurtail.CompressTests.test_partial_dot_group_does_not_add_blank_output) ... ok\ntest_readme_style_output (test_qurtail.CompressTests.test_readme_style_output) ... ok\ntest_regex_filters_run_before_similarity_tracking (test_qurtail.CompressTests.test_regex_filters_run_before_similarity_tracking) ... ok\ntest_rotate_sample_can_use_a_seconds_interval (test_qurtail.CompressTests.test_rotate_sample_can_use_a_seconds_interval) ... ok\ntest_rotate_sample_prints_every_nth_repeat_in_full (test_qurtail.CompressTests.test_rotate_sample_prints_every_nth_repeat_in_full) ... ok\ntest_rotate_sample_timer_survives_silent_dot_groups (test_qurtail.CompressTests.test_rotate_sample_timer_survives_silent_dot_groups) ... ok\ntest_severity_change_is_shown_before_repeated_errors_are_suppressed (test_qurtail.CompressTests.test_severity_change_is_shown_before_repeated_errors_are_suppressed) ... ok\ntest_spinner_rotates_in_one_terminal_cell (test_qurtail.CompressTests.test_spinner_rotates_in_one_terminal_cell) ... ok\n\n----------------------------------------------------------------------\nRan 27 tests in <elapsed>s\n\nOK"
+        }
+      ],
+      "qurtail": {
+        "command": "python -m qurtail -c benchmarks/codex-workload-replay.toml",
+        "exit_code": 0,
+        "output": "test_common_timestamp_and_level_formats_can_be_ignored (test_qurtail.CompressTests.test_common_timestamp_and_level_formats_can_be_ignored) ... ok\ntest_comparison_lines_do_not_hide_a_severity_transition (test_qurtail.CompressTests.test_comparison_lines_do_not_hide_a_severity_transition) ... ok\ntest_comparison_lines_remain_persistent_known_noise (test_qurtail.CompressTests.test_comparison_lines_remain_persistent_known_noise) ... ok\ntest_counts_mode_updates_count_and_elapsed_time (test_qurtail.CompressTests.test_counts_mode_updates_count_and_elapsed_time) ... ok\ntest_dot_every_groups_suppressed_lines (test_qurtail.CompressTests.test_dot_every_groups_suppressed_lines) ... ok\ntest_exact_json_key_takes_priority_over_dotted_lookup (test_qurtail.CompressTests.test_exact_json_key_takes_priority_over_dotted_lookup) ... ok\ntest_history_only_covers_recent_lines (test_qurtail.CompressTests.test_history_only_covers_recent_lines) ... ok\ntest_http_error_status_is_shown_then_repeated_errors_are_suppressed (test_qurtail.CompressTests.test_http_error_status_is_shown_then_repeated_errors_are_suppressed) ... ok\ntest_http_status_inside_a_json_message_is_preserved (test_qurtail.CompressTests.test_http_status_inside_a_json_message_is_preserved) ... ok\ntest_json_error_payload_survives_message_field_selection (test_qurtail.CompressTests.test_json_error_payload_survives_message_field_selection) ... ok\ntest_json_fields_can_be_ignored_or_selected (test_qurtail.CompressTests.test_json_fields_can_be_ignored_or_selected) ... ok\ntest_json_http_status_outranks_normal_level (test_qurtail.CompressTests.test_json_http_status_outranks_normal_level) ... ok\ntest_json_metadata_key_does_not_hide_a_severity_change (test_qurtail.CompressTests.test_json_metadata_key_does_not_hide_a_severity_change) ... ok\ntest_json_severity_change_survives_message_field_selection (test_qurtail.CompressTests.test_json_severity_change_survives_message_field_selection) ... ok\ntest_marker_and_spinner_colors_are_terminal_only (test_qurtail.CompressTests.test_marker_and_spinner_colors_are_terminal_only) ... ok\ntest_marker_can_be_changed (test_qurtail.CompressTests.test_marker_can_be_changed) ... ok\ntest_meaningfully_different_lines_are_printed_in_full (test_qurtail.CompressTests.test_meaningfully_different_lines_are_printed_in_full) ... ok\ntest_nested_json_message_field_can_be_selected (test_qurtail.CompressTests.test_nested_json_message_field_can_be_selected) ... ok\ntest_nested_pino_response_status_is_preserved (test_qurtail.CompressTests.test_nested_pino_response_status_is_preserved) ... ok\ntest_partial_dot_group_does_not_add_blank_output (test_qurtail.CompressTests.test_partial_dot_group_does_not_add_blank_output) ... ok\ntest_readme_style_output (test_qurtail.CompressTests.test_readme_style_output) ... ok\ntest_regex_filters_run_before_similarity_tracking (test_qurtail.CompressTests.test_regex_filters_run_before_similarity_tracking) ... ok\ntest_rotate_sample_can_use_a_seconds_interval (test_qurtail.CompressTests.test_rotate_sample_can_use_a_seconds_interval) ... ok\ntest_rotate_sample_prints_every_nth_repeat_in_full (test_qurtail.CompressTests.test_rotate_sample_prints_every_nth_repeat_in_full) ... ok\ntest_rotate_sample_timer_survives_silent_dot_groups (test_qurtail.CompressTests.test_rotate_sample_timer_survives_silent_dot_groups) ... ok\ntest_severity_change_is_shown_before_repeated_errors_are_suppressed (test_qurtail.CompressTests.test_severity_change_is_shown_before_repeated_errors_are_suppressed) ... ok\ntest_spinner_rotates_in_one_terminal_cell (test_qurtail.CompressTests.test_spinner_rotates_in_one_terminal_cell) ... ok\n\n----------------------------------------------------------------------\nRan 27 tests in <elapsed>s\n.\nOK\n................................"
+      }
+    },
+    {
+      "name": "canvas-frontend-regression",
+      "title": "Canvas frontend regression",
+      "project": "canvas-frontend",
+      "technology": "React / PixiJS / Vitest",
+      "purpose": "Check a Canvas interface and its article-view integration.",
+      "command_source": "Codex task record",
+      "original_agent_command": "npm test -- src/__tests__/CanvasApp.test.tsx",
+      "source_observation": "The source task ran this focused command before reporting its full frontend suite green.",
+      "success_signal": "passed",
+      "repeats": 2,
+      "runs": [
+        {
+          "role": "agent_reference",
+          "exit_code": 0,
+          "output": "> <package>@<version> test\n> vitest run src/__tests__/CanvasApp.test.tsx\n\n\n RUN  v4.1.9 <repo:canvas-frontend>\n\nError: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)\n    at module.exports (<repo:canvas-frontend>\\node_modules\\jsdom\\lib\\jsdom\\browser\\not-implemented.js:9:17)\n    at HTMLCanvasElementImpl.getContext (<repo:canvas-frontend>\\node_modules\\jsdom\\lib\\jsdom\\living\\nodes\\HTMLCanvasElement-impl.js:42:5)\n    at HTMLCanvasElement.getContext (<repo:canvas-frontend>\\node_modules\\jsdom\\lib\\jsdom\\living\\generated\\HTMLCanvasElement.js:131:58)\n    at createColoredCanvas (file:///<repo:canvas-frontend>/node_modules/pixi.js/lib/rendering/renderers/canvas/utils/canUseNewCanvasBlendModes.mjs:7:26)\n    at canUseNewCanvasBlendModes (file:///<repo:canvas-frontend>/node_modules/pixi.js/lib/rendering/renderers/canvas/utils/canUseNewCanvasBlendModes.mjs:17:21)\n    at file:///<repo:canvas-frontend>/node_modules/pixi.js/lib/rendering/renderers/canvas/utils/canvasUtils.mjs:11:19\n    at ModuleJob.run (node:internal/modules/esm/module_job:268:25)\n    at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:543:26)\n    at VitestModuleEvaluator.runExternalModule (file:///<repo:canvas-frontend>/node_modules/vitest/dist/module-evaluator.js:80:21)\n    at VitestModuleRunner.directRequest (file:///<repo:canvas-frontend>/node_modules/vite/dist/node/module-runner.js:1233:24) undefined\n\n Test Files  1 passed (1)\n      Tests  20 passed (20)\n   Start at  <time>\n   Duration  <elapsed> (transform <elapsed>, setup <elapsed>, import <elapsed>, tests <elapsed>, environment <elapsed>)"
+        },
+        {
+          "role": "rerun",
+          "exit_code": 0,
+          "output": "> <package>@<version> test\n> vitest run src/__tests__/CanvasApp.test.tsx\n\n\n RUN  v4.1.9 <repo:canvas-frontend>\n\nError: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)\n    at module.exports (<repo:canvas-frontend>\\node_modules\\jsdom\\lib\\jsdom\\browser\\not-implemented.js:9:17)\n    at HTMLCanvasElementImpl.getContext (<repo:canvas-frontend>\\node_modules\\jsdom\\lib\\jsdom\\living\\nodes\\HTMLCanvasElement-impl.js:42:5)\n    at HTMLCanvasElement.getContext (<repo:canvas-frontend>\\node_modules\\jsdom\\lib\\jsdom\\living\\generated\\HTMLCanvasElement.js:131:58)\n    at createColoredCanvas (file:///<repo:canvas-frontend>/node_modules/pixi.js/lib/rendering/renderers/canvas/utils/canUseNewCanvasBlendModes.mjs:7:26)\n    at canUseNewCanvasBlendModes (file:///<repo:canvas-frontend>/node_modules/pixi.js/lib/rendering/renderers/canvas/utils/canUseNewCanvasBlendModes.mjs:17:21)\n    at file:///<repo:canvas-frontend>/node_modules/pixi.js/lib/rendering/renderers/canvas/utils/canvasUtils.mjs:11:19\n    at ModuleJob.run (node:internal/modules/esm/module_job:268:25)\n    at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:543:26)\n    at VitestModuleEvaluator.runExternalModule (file:///<repo:canvas-frontend>/node_modules/vitest/dist/module-evaluator.js:80:21)\n    at VitestModuleRunner.directRequest (file:///<repo:canvas-frontend>/node_modules/vite/dist/node/module-runner.js:1233:24) undefined\n\n Test Files  1 passed (1)\n      Tests  20 passed (20)\n   Start at  <time>\n   Duration  <elapsed> (transform <elapsed>, setup <elapsed>, import <elapsed>, tests <elapsed>, environment <elapsed>)"
+        }
+      ],
+      "qurtail": {
+        "command": "python -m qurtail -c benchmarks/codex-workload-replay.toml",
+        "exit_code": 0,
+        "output": "> <package>@<version> test\n> vitest run src/__tests__/CanvasApp.test.tsx\n\n.\n RUN  v4.1.9 <repo:canvas-frontend>\n.\nError: Not implemented: HTMLCanvasElement.prototype.getContext (without installing the canvas npm package)\n    at module.exports (<repo:canvas-frontend>\\node_modules\\jsdom\\lib\\jsdom\\browser\\not-implemented.js:9:17)\n    at HTMLCanvasElementImpl.getContext (<repo:canvas-frontend>\\node_modules\\jsdom\\lib\\jsdom\\living\\nodes\\HTMLCanvasElement-impl.js:42:5)\n    at HTMLCanvasElement.getContext (<repo:canvas-frontend>\\node_modules\\jsdom\\lib\\jsdom\\living\\generated\\HTMLCanvasElement.js:131:58)\n    at createColoredCanvas (file:///<repo:canvas-frontend>/node_modules/pixi.js/lib/rendering/renderers/canvas/utils/canUseNewCanvasBlendModes.mjs:7:26)\n    at canUseNewCanvasBlendModes (file:///<repo:canvas-frontend>/node_modules/pixi.js/lib/rendering/renderers/canvas/utils/canUseNewCanvasBlendModes.mjs:17:21)\n    at file:///<repo:canvas-frontend>/node_modules/pixi.js/lib/rendering/renderers/canvas/utils/canvasUtils.mjs:11:19\n    at ModuleJob.run (node:internal/modules/esm/module_job:268:25)\n    at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:543:26)\n    at VitestModuleEvaluator.runExternalModule (file:///<repo:canvas-frontend>/node_modules/vitest/dist/module-evaluator.js:80:21)\n    at VitestModuleRunner.directRequest (file:///<repo:canvas-frontend>/node_modules/vite/dist/node/module-runner.js:1233:24) undefined\n.\n Test Files  1 passed (1)\n      Tests  20 passed (20)\n   Start at  <time>\n   Duration  <elapsed> (transform <elapsed>, setup <elapsed>, import <elapsed>, tests <elapsed>, environment <elapsed>)\n......................"
+      }
+    },
+    {
+      "name": "python-cli-smoke",
+      "title": "Python CLI smoke test",
+      "project": "python-cli",
+      "technology": "Python / Poetry / Pytest",
+      "purpose": "Check an installed console entry point in an isolated directory.",
+      "command_source": "Codex task record",
+      "original_agent_command": "poetry run pytest tests/test_init_files.py::test_installed_console_script_init_runs -q",
+      "source_observation": "The source task reported both CLI entry-path smoke tests passing.",
+      "success_signal": "passed",
+      "repeats": 2,
+      "runs": [
+        {
+          "role": "agent_reference",
+          "exit_code": 0,
+          "output": "<home>\\AppData\\Local\\Programs\\Python\\Python310\\lib\\site-packages\\requests\\__init__.py:109: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version!\n  warnings.warn(\n.                                                                        [100%]\n1 passed in <elapsed>"
+        },
+        {
+          "role": "rerun",
+          "exit_code": 0,
+          "output": "<home>\\AppData\\Local\\Programs\\Python\\Python310\\lib\\site-packages\\requests\\__init__.py:109: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version!\n  warnings.warn(\n.                                                                        [100%]\n1 passed in <elapsed>"
+        }
+      ],
+      "qurtail": {
+        "command": "python -m qurtail -c benchmarks/codex-workload-replay.toml",
+        "exit_code": 0,
+        "output": "<home>\\AppData\\Local\\Programs\\Python\\Python310\\lib\\site-packages\\requests\\__init__.py:109: RequestsDependencyWarning: urllib3 (2.7.0) or chardet (7.4.3)/charset_normalizer (3.4.7) doesn't match a supported version!\n  warnings.warn(\n.                                                                        [100%]\n1 passed in <elapsed>\n...."
+      }
+    },
+    {
+      "name": "visual-renderer-regression",
+      "title": "Visual renderer regression",
+      "project": "visual-renderer",
+      "technology": "TypeScript / Three.js / Vitest",
+      "purpose": "Check deterministic camera-image-effect sampling and defaults.",
+      "command_source": "Codex task record",
+      "original_agent_command": "npm test -- tests/steer/engine/cameraImageEffects.test.ts",
+      "source_observation": "The source task included this target in a 722-test passing suite.",
+      "success_signal": "passed",
+      "repeats": 2,
+      "runs": [
+        {
+          "role": "agent_reference",
+          "exit_code": 0,
+          "output": "> <package>@<version> test\n> vitest run tests/steer/engine/cameraImageEffects.test.ts\n\n\n RUN  v4.1.8 <repo:visual-renderer>\n\n\n Test Files  1 passed (1)\n      Tests  13 passed (13)\n   Start at  <time>\n   Duration  <elapsed> (transform <elapsed>, setup <elapsed>, import <elapsed>, tests <elapsed>, environment <elapsed>)"
+        },
+        {
+          "role": "rerun",
+          "exit_code": 0,
+          "output": "> <package>@<version> test\n> vitest run tests/steer/engine/cameraImageEffects.test.ts\n\n\n RUN  v4.1.8 <repo:visual-renderer>\n\n\n Test Files  1 passed (1)\n      Tests  13 passed (13)\n   Start at  <time>\n   Duration  <elapsed> (transform <elapsed>, setup <elapsed>, import <elapsed>, tests <elapsed>, environment <elapsed>)"
+        }
+      ],
+      "qurtail": {
+        "command": "python -m qurtail -c benchmarks/codex-workload-replay.toml",
+        "exit_code": 0,
+        "output": "> <package>@<version> test\n> vitest run tests/steer/engine/cameraImageEffects.test.ts\n\n.\n RUN  v4.1.8 <repo:visual-renderer>\n..\n Test Files  1 passed (1)\n      Tests  13 passed (13)\n   Start at  <time>\n   Duration  <elapsed> (transform <elapsed>, setup <elapsed>, import <elapsed>, tests <elapsed>, environment <elapsed>)\n..........."
+      }
+    }
+  ]
+}
