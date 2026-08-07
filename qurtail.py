@@ -55,6 +55,233 @@ LOG_LEVEL_PREFIX = re.compile(
     r"(?:\s*[:|-]\s*|\s+)",
     re.IGNORECASE,
 )
+SIGNAL_LEVEL = re.compile(
+    r"(?<![A-Za-z])(?:TRACE|DEBUG|INFO(?:RMATION)?|NOTICE|WARN(?:ING)?|ERROR|"
+    r"CRITICAL|FATAL|PANIC|ALERT|EMERG(?:ENCY)?)(?![A-Za-z])",
+    re.IGNORECASE,
+)
+HTTP_STATUS = re.compile(r'"\s+([1-5]\d{2})(?:\s|$)')
+NAMED_STATUS = re.compile(r"\bstatus(?:_code)?\s*[=:]\s*[\"']?([1-5]\d{2})\b")
+SYSLOG_PRIORITY = re.compile(r"^\s*<(\d{1,3})>")
+MACOS_LOG_LEVEL = re.compile(
+    r"^\s*\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?\s+"
+    r"(Df|D|I|N|E|F)\s"
+)
+FAILURE_WORD = re.compile(
+    r"\b(?:exception|traceback|panic|segfault|failed|failure|denied|refused|"
+    r"unavailable|deadlock|crash(?:ed|ing)?)\b",
+    re.IGNORECASE,
+)
+SIGNAL_RANK = {"normal": 0, "warning": 1, "error": 2}
+JSON_ERROR_FIELDS = ("error", "Error", "exception", "Exception", "err")
+_MISSING = object()
+
+
+def _status_signal(status: int) -> str:
+    """Group an HTTP status into normal, warning, or error traffic."""
+    if status >= 500:
+        return "error"
+    if status >= 400:
+        return "warning"
+    return "normal"
+
+
+def _strongest_signal(signals: Iterable[str]) -> str | None:
+    """Return the most severe signal found across a structured log record."""
+    return max(signals, key=SIGNAL_RANK.__getitem__, default=None)
+
+
+def _json_field(value: dict[str, object], path: str) -> object:
+    """Resolve a dotted field path in a JSON object."""
+    if path in value:
+        return value[path]
+
+    current: object = value
+    for field in path.split("."):
+        if not isinstance(current, dict) or field not in current:
+            return _MISSING
+        current = current[field]
+    return current
+
+
+def _text_values(value: object) -> Iterable[str]:
+    """Yield text contained in a selected JSON message value."""
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from _text_values(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _text_values(item)
+
+
+def _has_error_payload(value: object) -> bool:
+    """Return whether a conventional JSON error field carries useful failure data."""
+    if value is None:
+        return False
+    if isinstance(value, str):
+        text = value.strip().casefold()
+        return bool(text) and text not in {"0", "false", "none", "null"}
+    if isinstance(value, dict):
+        return any(_has_error_payload(item) for item in value.values())
+    if isinstance(value, list):
+        return any(_has_error_payload(item) for item in value)
+    return bool(value)
+
+
+def _json_signal_texts(
+    value: dict[str, object], message_field: str | None
+) -> tuple[str, ...]:
+    """Select message values for free-text severity and failure detection."""
+    fields = (
+        (message_field,)
+        if message_field
+        else (
+            "message",
+            "Message",
+            "msg",
+            "log",
+            "body",
+            "Body",
+            "event",
+            *JSON_ERROR_FIELDS,
+        )
+    )
+    return tuple(
+        text
+        for field in fields
+        if (selected := _json_field(value, field)) is not _MISSING
+        for text in _text_values(selected)
+    )
+
+
+def _level_signal(level: object, *, field: str = "") -> str | None:
+    """Map common textual and structured log levels to a signal class."""
+    if isinstance(level, (int, float)) and not isinstance(level, bool):
+        if field.casefold() in {"severitynumber", "severity_number"}:
+            if level >= 17:
+                return "error"
+            if level >= 13:
+                return "warning"
+            return "normal"
+        if level >= 50:
+            return "error"
+        if level >= 40:
+            return "warning"
+        if level >= 10:
+            return "normal"
+        return None
+
+    text = str(level).strip().casefold()
+    if text.isdigit():
+        return _level_signal(int(text), field=field)
+    if text in {
+        "error",
+        "critical",
+        "fatal",
+        "panic",
+        "alert",
+        "emerg",
+        "emergency",
+    }:
+        return "error"
+    if text in {"warn", "warning"}:
+        return "warning"
+    if text in {"trace", "debug", "info", "information", "notice"}:
+        return "normal"
+    return None
+
+
+def _signal_class(
+    line: str,
+    *,
+    ignore_levels: bool = False,
+    message_field: str | None = None,
+) -> str | None:
+    """Detect severity changes that should remain visible despite high similarity."""
+    signals: list[str] = []
+    try:
+        value = json.loads(line)
+    except (json.JSONDecodeError, TypeError):
+        value = None
+
+    signal_texts = (line,)
+    if isinstance(value, dict):
+        if not ignore_levels:
+            for field in (
+                "SeverityText",
+                "severity_text",
+                "severityText",
+                "SeverityNumber",
+                "severity_number",
+                "severityNumber",
+                "LogLevel",
+                "logLevel",
+                "LevelDisplayName",
+                "levelDisplayName",
+                "levelname",
+                "severity",
+                "level",
+            ):
+                if field in value:
+                    signal = _level_signal(value[field], field=field)
+                    if signal:
+                        signals.append(signal)
+
+        status_containers = [value]
+        status_containers.extend(
+            nested
+            for field in ("res", "response", "http")
+            if isinstance((nested := value.get(field)), dict)
+        )
+        for container in status_containers:
+            for field in ("status", "status_code", "statusCode", "StatusCode"):
+                if field in container:
+                    try:
+                        signals.append(_status_signal(int(container[field])))
+                    except (TypeError, ValueError):
+                        pass
+        if any(
+            field in value and _has_error_payload(value[field])
+            for field in JSON_ERROR_FIELDS
+        ):
+            signals.append("error")
+        signal_texts = _json_signal_texts(value, message_field)
+
+    for signal_text in signal_texts:
+        priority_match = SYSLOG_PRIORITY.match(signal_text)
+        if priority_match and not ignore_levels:
+            priority = int(priority_match.group(1))
+            if priority <= 191:
+                severity = priority % 8
+                if severity <= 3:
+                    signals.append("error")
+                elif severity == 4:
+                    signals.append("warning")
+                else:
+                    signals.append("normal")
+
+        status_match = HTTP_STATUS.search(signal_text) or NAMED_STATUS.search(
+            signal_text
+        )
+        if status_match:
+            signals.append(_status_signal(int(status_match.group(1))))
+
+        if not ignore_levels:
+            macos_level = MACOS_LOG_LEVEL.match(signal_text)
+            if macos_level:
+                signals.append(
+                    "error" if macos_level.group(1) in {"E", "F"} else "normal"
+                )
+            level_match = SIGNAL_LEVEL.search(signal_text)
+            if level_match:
+                signal = _level_signal(level_match.group(0))
+                if signal:
+                    signals.append(signal)
+        if FAILURE_WORD.search(signal_text):
+            signals.append("error")
+    return _strongest_signal(signals)
 
 
 def _normalize_line(
@@ -95,9 +322,14 @@ def _json_comparable(
 
     if not isinstance(value, dict):
         return line
-    if message_field and message_field in value:
-        message = value[message_field]
-        return message if isinstance(message, str) else json.dumps(message, sort_keys=True)
+    if message_field:
+        message = _json_field(value, message_field)
+        if message is not _MISSING:
+            return (
+                message
+                if isinstance(message, str)
+                else json.dumps(message, sort_keys=True)
+            )
 
     filtered = {key: item for key, item in value.items() if key not in ignore_fields}
     return json.dumps(filtered, sort_keys=True, separators=(",", ":"))
@@ -147,6 +379,7 @@ class QurTail:
         spinner: str = DEFAULT_SPINNER,
         spinner_color: str | None = None,
         dot_color: str | None = None,
+        dot_every: int = 1,
         ignore_timestamps: bool = False,
         ignore_levels: bool = False,
         ignore_prefixes: tuple[str, ...] = (),
@@ -168,6 +401,8 @@ class QurTail:
             raise ValueError("mode must be 'dots', 'spinner', or 'counts'")
         if not spinner or any(character in spinner for character in "\b\r\n"):
             raise ValueError("spinner must be non-empty and contain no control characters")
+        if dot_every < 1:
+            raise ValueError("dot_every must be at least 1")
         for option, color in (("spinner_color", spinner_color), ("dot_color", dot_color)):
             if color and color not in ANSI_COLORS:
                 raise ValueError(f"{option} must be a recognized color name")
@@ -182,12 +417,13 @@ class QurTail:
 
         self._output = output
         self._similarity = similarity
-        self._history: deque[str] = deque(maxlen=history_size)
+        self._history: deque[tuple[str | None, str]] = deque(maxlen=history_size)
         self._marker = marker
         self._mode = mode
         self._spinner = spinner
         self._spinner_color = spinner_color
         self._dot_color = dot_color
+        self._dot_every = dot_every
         self._color_enabled = bool(getattr(output, "isatty", lambda: False)())
         self._spinner_index = 0
         self._repeat_count = 0
@@ -203,7 +439,7 @@ class QurTail:
         self._rotate_sample_count = rotate_sample_count
         self._rotate_sample_seconds = rotate_sample_seconds
         self._references = tuple(
-            self._comparable(line.rstrip("\r\n")) for line in comparison_lines
+            self._comparison_key(line.rstrip("\r\n")) for line in comparison_lines
         )
         self._markers_open = False
 
@@ -221,6 +457,15 @@ class QurTail:
             ignore_prefixes=self._ignore_prefixes,
         )
 
+    def _comparison_key(self, line: str) -> tuple[str | None, str]:
+        """Keep severity transitions separate from normalized line content."""
+        signal = _signal_class(
+            line,
+            ignore_levels=self._ignore_levels,
+            message_field=self._message_field,
+        )
+        return signal, self._comparable(line)
+
     def process(self, line: str) -> None:
         """Process one input line and write its full or compressed representation."""
         printable = line.rstrip("\r\n")
@@ -229,19 +474,21 @@ class QurTail:
         if self._exclude_pattern and self._exclude_pattern.search(printable):
             return
 
-        comparable = self._comparable(printable)
+        signal, comparable = self._comparison_key(printable)
         repeated = any(
-            SequenceMatcher(None, comparable, previous).ratio() >= self._similarity
-            for previous in self._history
+            signal == previous_signal
+            and SequenceMatcher(None, comparable, previous).ratio() >= self._similarity
+            for previous_signal, previous in self._history
         ) or any(
-            SequenceMatcher(None, comparable, reference).ratio() >= self._similarity
-            for reference in self._references
+            signal == reference_signal
+            and SequenceMatcher(None, comparable, reference).ratio() >= self._similarity
+            for reference_signal, reference in self._references
         )
-        self._history.append(comparable)
+        self._history.append((signal, comparable))
 
         if repeated:
             now = self._clock()
-            if not self._markers_open:
+            if self._repeat_count == 0:
                 self._repeat_started = now
             self._repeat_count += 1
             sample_due = (
@@ -267,6 +514,7 @@ class QurTail:
                 symbol = self._spinner[self._spinner_index % len(self._spinner)]
                 self._output.write(_colorize(symbol, self._spinner_color, self._color_enabled))
                 self._spinner_index += 1
+                self._markers_open = True
             elif self._mode == "counts":
                 if self._markers_open:
                     self._output.write("\r")
@@ -275,19 +523,22 @@ class QurTail:
                 self._output.write(
                     f"[{self._repeat_count} similar {noun}, {elapsed}s]"
                 )
+                self._markers_open = True
             else:
-                self._output.write(
-                    _colorize(self._marker, self._dot_color, self._color_enabled)
-                )
-            self._output.flush()
-            self._markers_open = True
+                if self._repeat_count % self._dot_every == 0:
+                    self._output.write(
+                        _colorize(self._marker, self._dot_color, self._color_enabled)
+                    )
+                    self._markers_open = True
+            if self._markers_open:
+                self._output.flush()
             return
 
         if self._markers_open:
             self._output.write("\n")
-            self._markers_open = False
-            self._spinner_index = 0
-            self._repeat_count = 0
+        self._markers_open = False
+        self._spinner_index = 0
+        self._repeat_count = 0
 
         self._output.write(printable + "\n")
         self._output.flush()
@@ -296,9 +547,9 @@ class QurTail:
         """Close an unfinished marker run so the terminal prompt starts on a new line."""
         if self._markers_open:
             self._output.write("\n")
-            self._markers_open = False
-            self._spinner_index = 0
-            self._repeat_count = 0
+        self._markers_open = False
+        self._spinner_index = 0
+        self._repeat_count = 0
         self._output.flush()
 
 
@@ -405,6 +656,7 @@ def _load_rc(path: Path) -> dict[str, object]:
         "spinner": str,
         "spinner_color": str,
         "dot_color": str,
+        "dot_every": int,
         "poll_interval": float,
         "ignore_timestamps": _rc_bool,
         "ignore_levels": _rc_bool,
@@ -487,6 +739,13 @@ def _build_parser(defaults: dict[str, object], config_path: Path) -> argparse.Ar
         choices=tuple(ANSI_COLORS),
         default=defaults.get("dot_color"),
         help="dot-marker color for terminal output",
+    )
+    parser.add_argument(
+        "--dot-every",
+        type=int,
+        default=defaults.get("dot_every", 1),
+        metavar="N",
+        help="print one dot for every N suppressed lines (default: %(default)s)",
     )
     parser.add_argument(
         "--ignore-timestamps",
@@ -577,6 +836,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--history must be at least 1")
     if args.poll_interval <= 0:
         parser.error("--poll-interval must be greater than 0")
+    if args.dot_every < 1:
+        parser.error("--dot-every must be at least 1")
     if not args.marker or "\n" in args.marker or "\r" in args.marker:
         parser.error("--marker must be non-empty and contain no newlines")
     if args.mode not in {"dots", "spinner", "counts"}:
@@ -605,6 +866,7 @@ def main(argv: list[str] | None = None) -> int:
             spinner=args.spinner,
             spinner_color=args.spinner_color,
             dot_color=args.dot_color,
+            dot_every=args.dot_every,
             ignore_timestamps=args.ignore_timestamps,
             ignore_levels=args.ignore_levels,
             ignore_prefixes=tuple(args.ignore_prefixes),

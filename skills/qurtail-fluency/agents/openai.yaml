@@ -1,0 +1,4 @@
+interface:
+  display_name: "Qurtail Fluency"
+  short_description: "Reduce noisy development logs with qurtail"
+  default_prompt: "Use $qurtail-fluency to compact a noisy development log stream while retaining useful samples and failures."

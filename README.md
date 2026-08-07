@@ -52,6 +52,15 @@ mode = spinner
 spinner = |/-\
 ```
 
+#### Reduced output
+It supports rc config options to reduce output by printing a single dot for each suppressed line, or a single dot for each N suppressed lines:
+
+```toml
+[qurtail]
+mode = dots
+dot_every = 1
+```
+
 #### Color customization
 
 qurtail supports color customization for the spinner and the dot marker. You can set the colors in your rc file:
@@ -62,7 +71,7 @@ spinner_color = green
 dot_color = yellow
 ```
 
-#### COUNTS
+#### Counts
 
 Replace long dot runs with an updating summary such as `[127 similar lines, 8s]`. It preserves frequency information without terminal noise.
 
@@ -125,8 +134,12 @@ Print every Nth suppressed line or one sample every N seconds. This gives visibi
 rotate_sample = 10
 ```
 
-## Bugfix Changelog
-* TODO
+
+
+## Changelog
+* Added a log corpus based on well-known log formats to test against, along with tests
+* Added preliminary support for agentic workloads by researching the most popular log formats read/awaited/monitored by working agents such as Codex, Claude Code, and ChatGPT while they are doing agentic development work on Windows, Linux, and MacOS. Added support for reducing the token counts for those most common log use cases so agents can focus on their work and still catch exceptional pieces.
+* Added an agentic 'qurtail fluency' skill that provides concise instructions on how to use qurtail to reduce token usage for agentic workloads better than any existing log tailing tool. 
 
 ## License
 MIT License

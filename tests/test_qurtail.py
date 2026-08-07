@@ -1,6 +1,7 @@
 """Tests for qurtail's documented stream compression behavior."""
 
 from io import StringIO
+import json
 import os
 from pathlib import Path
 import shutil
@@ -11,6 +12,9 @@ import time
 import unittest
 
 from qurtail import compress
+
+
+CORPUS_PATH = Path(__file__).parent / "fixtures" / "log_corpus.json"
 
 
 class TerminalBuffer(StringIO):
@@ -70,6 +74,20 @@ class CompressTests(unittest.TestCase):
 
         self.assertEqual(output.getvalue(), "same\n~~\n")
 
+    def test_dot_every_groups_suppressed_lines(self) -> None:
+        output = StringIO()
+
+        compress(["same\n"] * 8, output, dot_every=3)
+
+        self.assertEqual(output.getvalue(), "same\n..\n")
+
+    def test_partial_dot_group_does_not_add_blank_output(self) -> None:
+        output = StringIO()
+
+        compress(["same\n", "same\n", "changed\n"], output, dot_every=3)
+
+        self.assertEqual(output.getvalue(), "same\nchanged\n")
+
     def test_spinner_rotates_in_one_terminal_cell(self) -> None:
         output = StringIO()
 
@@ -93,6 +111,112 @@ class CompressTests(unittest.TestCase):
         compress(lines, output, ignore_timestamps=True, ignore_levels=True)
 
         self.assertEqual(output.getvalue(), lines[0] + "...\n")
+
+    def test_severity_change_is_shown_before_repeated_errors_are_suppressed(
+        self,
+    ) -> None:
+        output = StringIO()
+        lines = [
+            "INFO worker heartbeat request=41\n",
+            "ERROR worker heartbeat request=41\n",
+            "ERROR worker heartbeat request=41\n",
+        ]
+
+        compress(lines, output)
+
+        self.assertEqual(output.getvalue(), lines[0] + lines[1] + ".\n")
+
+    def test_json_severity_change_survives_message_field_selection(self) -> None:
+        output = StringIO()
+        lines = [
+            '{"level":30,"msg":"request complete"}\n',
+            '{"level":50,"msg":"request complete"}\n',
+            '{"level":50,"msg":"request complete"}\n',
+        ]
+
+        compress(lines, output, message_field="msg")
+
+        self.assertEqual(output.getvalue(), lines[0] + lines[1] + ".\n")
+
+    def test_json_metadata_key_does_not_hide_a_severity_change(self) -> None:
+        output = StringIO()
+        lines = [
+            '{"level":30,"error":null,"msg":"request complete"}\n',
+            '{"level":50,"error":null,"msg":"request complete"}\n',
+            '{"level":50,"error":null,"msg":"request complete"}\n',
+        ]
+
+        compress(lines, output, message_field="msg")
+
+        self.assertEqual(output.getvalue(), lines[0] + lines[1] + ".\n")
+
+    def test_json_error_payload_survives_message_field_selection(self) -> None:
+        output = StringIO()
+        lines = [
+            '{"level":30,"error":null,"msg":"request complete"}\n',
+            '{"level":30,"error":"connection refused","msg":"request complete"}\n',
+            '{"level":30,"error":"connection refused","msg":"request complete"}\n',
+        ]
+
+        compress(lines, output, message_field="msg")
+
+        self.assertEqual(output.getvalue(), lines[0] + lines[1] + ".\n")
+
+    def test_json_http_status_outranks_normal_level(self) -> None:
+        output = StringIO()
+        lines = [
+            '{"level":30,"status":200,"msg":"request complete"}\n',
+            '{"level":30,"status":200,"msg":"request complete"}\n',
+            '{"level":30,"status":404,"msg":"request complete"}\n',
+            '{"level":30,"status":404,"msg":"request complete"}\n',
+            '{"level":30,"status":500,"msg":"request complete"}\n',
+            '{"level":30,"status":500,"msg":"request complete"}\n',
+        ]
+
+        compress(lines, output, message_field="msg")
+
+        self.assertEqual(
+            output.getvalue(),
+            lines[0] + ".\n" + lines[2] + ".\n" + lines[4] + ".\n",
+        )
+
+    def test_nested_pino_response_status_is_preserved(self) -> None:
+        output = StringIO()
+        lines = [
+            '{"level":30,"res":{"statusCode":200},"msg":"request complete"}\n',
+            '{"level":30,"res":{"statusCode":500},"msg":"request complete"}\n',
+            '{"level":30,"res":{"statusCode":500},"msg":"request complete"}\n',
+        ]
+
+        compress(lines, output, message_field="msg")
+
+        self.assertEqual(output.getvalue(), lines[0] + lines[1] + ".\n")
+
+    def test_http_error_status_is_shown_then_repeated_errors_are_suppressed(
+        self,
+    ) -> None:
+        output = StringIO()
+        lines = [
+            '127.0.0.1 - - "GET /health HTTP/1.1" 200 17\n',
+            '127.0.0.1 - - "GET /health HTTP/1.1" 500 17\n',
+            '127.0.0.1 - - "GET /health HTTP/1.1" 500 17\n',
+        ]
+
+        compress(lines, output, similarity=0.95)
+
+        self.assertEqual(output.getvalue(), lines[0] + lines[1] + ".\n")
+
+    def test_http_status_inside_a_json_message_is_preserved(self) -> None:
+        output = StringIO()
+        lines = [
+            '{"log":"GET /health HTTP/1.1\\\" 200 17"}\n',
+            '{"log":"GET /health HTTP/1.1\\\" 500 17"}\n',
+            '{"log":"GET /health HTTP/1.1\\\" 500 17"}\n',
+        ]
+
+        compress(lines, output, message_field="log", similarity=0.95)
+
+        self.assertEqual(output.getvalue(), lines[0] + lines[1] + ".\n")
 
     def test_regex_filters_run_before_similarity_tracking(self) -> None:
         output = StringIO()
@@ -164,6 +288,28 @@ class CompressTests(unittest.TestCase):
         self.assertEqual(ignored_output.getvalue(), lines[0] + ".\n")
         self.assertEqual(selected_output.getvalue(), lines[0] + ".\n")
 
+    def test_nested_json_message_field_can_be_selected(self) -> None:
+        output = StringIO()
+        lines = [
+            '{"timeUnixNano":"1","body":{"stringValue":"ready"}}\n',
+            '{"timeUnixNano":"2","body":{"stringValue":"ready"}}\n',
+        ]
+
+        compress(lines, output, message_field="body.stringValue")
+
+        self.assertEqual(output.getvalue(), lines[0] + ".\n")
+
+    def test_exact_json_key_takes_priority_over_dotted_lookup(self) -> None:
+        output = StringIO()
+        lines = [
+            '{"body.stringValue":"ready","body":{"stringValue":"one"}}\n',
+            '{"body.stringValue":"ready","body":{"stringValue":"two"}}\n',
+        ]
+
+        compress(lines, output, message_field="body.stringValue")
+
+        self.assertEqual(output.getvalue(), lines[0] + ".\n")
+
     def test_comparison_lines_remain_persistent_known_noise(self) -> None:
         output = StringIO()
 
@@ -174,6 +320,17 @@ class CompressTests(unittest.TestCase):
         )
 
         self.assertEqual(output.getvalue(), ".\nmeaningful event\n")
+
+    def test_comparison_lines_do_not_hide_a_severity_transition(self) -> None:
+        output = StringIO()
+
+        compress(
+            ["ERROR known noise 124\n", "ERROR known noise 124\n"],
+            output,
+            comparison_lines=["INFO known noise 123\n"],
+        )
+
+        self.assertEqual(output.getvalue(), "ERROR known noise 124\n.\n")
 
     def test_rotate_sample_prints_every_nth_repeat_in_full(self) -> None:
         output = StringIO()
@@ -194,6 +351,64 @@ class CompressTests(unittest.TestCase):
         )
 
         self.assertEqual(output.getvalue(), "heartbeat\n..\nheartbeat\n")
+
+    def test_rotate_sample_timer_survives_silent_dot_groups(self) -> None:
+        output = StringIO()
+        timestamps = iter((0.0, 4.0, 10.0))
+
+        compress(
+            ["heartbeat\n"] * 4,
+            output,
+            dot_every=100,
+            rotate_sample="10s",
+            clock=lambda: next(timestamps),
+        )
+
+        self.assertEqual(output.getvalue(), "heartbeat\nheartbeat\n")
+
+
+class CorpusTests(unittest.TestCase):
+    """Verify logs commonly inspected during development against sanitized fixtures."""
+
+    def test_corpus_declares_intended_fixture_coverage(self) -> None:
+        corpus = json.loads(CORPUS_PATH.read_text(encoding="utf-8"))
+        cases = corpus["cases"]
+
+        self.assertIn("Sanitized", corpus["methodology"])
+        self.assertTrue(corpus["sources"])
+        self.assertEqual(
+            {platform for case in cases for platform in case["platforms"]},
+            {"linux", "windows", "macos"},
+        )
+        self.assertTrue(
+            {"application", "test", "web", "container", "os"}
+            <= {case["workload"] for case in cases}
+        )
+        self.assertGreaterEqual(len({case["format"] for case in cases}), 10)
+
+    def test_development_log_corpus_compresses_noise_and_preserves_exceptions(
+        self,
+    ) -> None:
+        corpus = json.loads(CORPUS_PATH.read_text(encoding="utf-8"))
+        cases = corpus["cases"]
+
+        for case in cases:
+            with self.subTest(case=case["name"]):
+                output = StringIO()
+                lines = case["lines"]
+
+                self.assertIn(case["source"], corpus["sources"])
+                self.assertEqual(len(lines), 3)
+                compress(
+                    (line + "\n" for line in lines),
+                    output,
+                    **case["options"],
+                )
+
+                self.assertEqual(
+                    output.getvalue(),
+                    lines[0] + "\n.\n" + lines[2] + "\n",
+                )
 
 
 class CommandTests(unittest.TestCase):
@@ -380,6 +595,30 @@ class CommandTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, "same\n[1 similar line, 0s]\n")
+
+    def test_rc_can_reduce_dot_frequency(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            Path(home, ".qurtailrc").write_text(
+                "[qurtail]\nmode = dots\ndot_every = 2\n",
+                encoding="utf-8",
+            )
+            path = Path(home, "input.log")
+            path.write_text("same\nsame\nsame\nsame\n", encoding="utf-8")
+            environment = os.environ.copy()
+            environment["HOME"] = str(home)
+            environment["USERPROFILE"] = str(home)
+
+            result = subprocess.run(
+                [sys.executable, "-m", "qurtail", str(path)],
+                env=environment,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, "same\n.\n")
 
     def test_rc_can_rotate_every_nth_suppressed_line(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -568,6 +807,26 @@ class CommandTests(unittest.TestCase):
                 self.assertIn("rotate_sample must be a positive", result.stderr)
                 self.assertNotIn("Traceback", result.stderr)
 
+    def test_invalid_dot_every_reports_a_cli_error(self) -> None:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "qurtail",
+                "--config",
+                "missing.rc",
+                "--dot-every",
+                "0",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("--dot-every must be at least 1", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
     @unittest.skipUnless(
         sys.platform != "win32" and shutil.which("bash"),
         "requires Bash on a POSIX system",
@@ -648,6 +907,7 @@ class CommandTests(unittest.TestCase):
             self.assertIn("--exclude-regex", help_result.stdout)
             self.assertIn("--spinner-color", help_result.stdout)
             self.assertIn("--dot-color", help_result.stdout)
+            self.assertIn("--dot-every", help_result.stdout)
             self.assertIn("--ignore-field", help_result.stdout)
             self.assertIn("--message-field", help_result.stdout)
             self.assertIn("--comparison-file", help_result.stdout)

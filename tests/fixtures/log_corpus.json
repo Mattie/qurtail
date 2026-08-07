@@ -1,0 +1,236 @@
+{
+  "methodology": "Sanitized three-line samples shaped from the linked format documentation. Each case contains a baseline, recurring noise, and a distinct failure.",
+  "sources": [
+    "https://docs.python.org/3/howto/logging.html",
+    "https://docs.pytest.org/en/stable/how-to/logging.html",
+    "https://github.com/pinojs/pino/blob/main/docs/api.md",
+    "https://learn.microsoft.com/en-us/dotnet/core/extensions/logging/console-log-formatter",
+    "https://logging.apache.org/log4j/3.x/manual/pattern-layout.html",
+    "https://nginx.org/en/docs/http/ngx_http_log_module.html",
+    "https://httpd.apache.org/docs/2.4/logs.html",
+    "https://docs.docker.com/engine/logging/drivers/json-file/",
+    "https://kubernetes.io/docs/concepts/cluster-administration/logging/",
+    "https://www.freedesktop.org/software/systemd/man/255/journalctl.html",
+    "https://www.rfc-editor.org/info/rfc5424/",
+    "https://developer.apple.com/forums/thread/705868",
+    "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.diagnostics/get-winevent",
+    "https://opentelemetry.io/docs/specs/otel/logs/data-model/",
+    "https://opentelemetry.io/docs/specs/otel/protocol/file-exporter/"
+  ],
+  "cases": [
+    {
+      "name": "python-logging",
+      "format": "Python logging text",
+      "workload": "application",
+      "platforms": ["windows", "linux", "macos"],
+      "source": "https://docs.python.org/3/howto/logging.html",
+      "options": {
+        "ignore_timestamps": true,
+        "ignore_levels": true
+      },
+      "lines": [
+        "2026-08-07 09:00:00,100 INFO completed test shard 41",
+        "2026-08-07 09:00:00,200 INFO completed test shard 42",
+        "2026-08-07 09:00:01,000 ERROR fixture teardown failed: database is locked"
+      ]
+    },
+    {
+      "name": "pytest-live-log",
+      "format": "pytest live logging",
+      "workload": "test",
+      "platforms": ["windows", "linux", "macos"],
+      "source": "https://docs.pytest.org/en/stable/how-to/logging.html",
+      "options": {
+        "ignore_levels": true
+      },
+      "lines": [
+        "INFO test_worker.py:42 completed case 41",
+        "INFO test_worker.py:42 completed case 42",
+        "ERROR test_worker.py:77 fixture teardown failed: database is locked"
+      ]
+    },
+    {
+      "name": "pino-json",
+      "format": "Pino newline-delimited JSON",
+      "workload": "application",
+      "platforms": ["windows", "linux", "macos"],
+      "source": "https://github.com/pinojs/pino/blob/main/docs/api.md",
+      "options": {
+        "message_field": "msg"
+      },
+      "lines": [
+        "{\"level\":30,\"time\":1786111800100,\"pid\":412,\"hostname\":\"devbox\",\"msg\":\"cache refresh completed key=41\"}",
+        "{\"level\":30,\"time\":1786111800200,\"pid\":412,\"hostname\":\"devbox\",\"msg\":\"cache refresh completed key=42\"}",
+        "{\"level\":50,\"time\":1786111801000,\"pid\":412,\"hostname\":\"devbox\",\"msg\":\"cache refresh completed key=43\"}"
+      ]
+    },
+    {
+      "name": "dotnet-json-console",
+      "format": ".NET JSON console",
+      "workload": "application",
+      "platforms": ["windows", "linux", "macos"],
+      "source": "https://learn.microsoft.com/en-us/dotnet/core/extensions/logging/console-log-formatter",
+      "options": {
+        "message_field": "Message"
+      },
+      "lines": [
+        "{\"Timestamp\":\"09:10:00\",\"EventId\":14,\"LogLevel\":\"Information\",\"Category\":\"Example.BackgroundSync\",\"Message\":\"Background sync completed page=41\"}",
+        "{\"Timestamp\":\"09:10:01\",\"EventId\":14,\"LogLevel\":\"Information\",\"Category\":\"Example.BackgroundSync\",\"Message\":\"Background sync completed page=42\"}",
+        "{\"Timestamp\":\"09:10:02\",\"EventId\":15,\"LogLevel\":\"Error\",\"Category\":\"Example.BackgroundSync\",\"Message\":\"Background sync completed page=43\"}"
+      ]
+    },
+    {
+      "name": "log4j-pattern",
+      "format": "Log4j PatternLayout",
+      "workload": "application",
+      "platforms": ["windows", "linux", "macos"],
+      "source": "https://logging.apache.org/log4j/3.x/manual/pattern-layout.html",
+      "options": {
+        "ignore_timestamps": true,
+        "similarity": 0.93
+      },
+      "lines": [
+        "2026-08-07 09:20:00,100 [main] INFO com.example.Worker - completed batch 41",
+        "2026-08-07 09:20:00,200 [main] INFO com.example.Worker - completed batch 42",
+        "2026-08-07 09:20:01,000 [main] ERROR com.example.Worker - completed batch 43"
+      ]
+    },
+    {
+      "name": "nginx-combined-access",
+      "format": "NGINX combined access log",
+      "workload": "web",
+      "platforms": ["linux", "macos"],
+      "source": "https://nginx.org/en/docs/http/ngx_http_log_module.html",
+      "options": {
+        "similarity": 0.95
+      },
+      "lines": [
+        "127.0.0.1 - - [07/Aug/2026:09:30:00 -0500] \"GET /health HTTP/1.1\" 200 17 \"-\" \"kube-probe/1.34\"",
+        "127.0.0.1 - - [07/Aug/2026:09:30:01 -0500] \"GET /health HTTP/1.1\" 200 17 \"-\" \"kube-probe/1.34\"",
+        "127.0.0.1 - - [07/Aug/2026:09:30:02 -0500] \"GET /health HTTP/1.1\" 500 17 \"-\" \"kube-probe/1.34\""
+      ]
+    },
+    {
+      "name": "apache-common-access",
+      "format": "Apache Common Log Format",
+      "workload": "web",
+      "platforms": ["windows", "linux", "macos"],
+      "source": "https://httpd.apache.org/docs/2.4/logs.html",
+      "options": {
+        "similarity": 0.95
+      },
+      "lines": [
+        "127.0.0.1 - frank [07/Aug/2026:09:35:00 -0500] \"GET /status HTTP/1.1\" 200 12",
+        "127.0.0.1 - frank [07/Aug/2026:09:35:01 -0500] \"GET /status HTTP/1.1\" 200 12",
+        "127.0.0.1 - frank [07/Aug/2026:09:35:02 -0500] \"GET /status HTTP/1.1\" 500 12"
+      ]
+    },
+    {
+      "name": "docker-json-file",
+      "format": "Docker json-file record",
+      "workload": "container",
+      "platforms": ["windows", "linux", "macos"],
+      "source": "https://docs.docker.com/engine/logging/drivers/json-file/",
+      "options": {
+        "message_field": "log"
+      },
+      "lines": [
+        "{\"log\":\"health check passed container=api replica=1\\n\",\"stream\":\"stdout\",\"time\":\"2026-08-07T09:40:00.100000000Z\"}",
+        "{\"log\":\"health check passed container=api replica=2\\n\",\"stream\":\"stdout\",\"time\":\"2026-08-07T09:40:01.100000000Z\"}",
+        "{\"log\":\"panic: database connection refused during startup\\n\",\"stream\":\"stderr\",\"time\":\"2026-08-07T09:40:02.100000000Z\"}"
+      ]
+    },
+    {
+      "name": "kubernetes-cri",
+      "format": "Kubernetes CRI text",
+      "workload": "container",
+      "platforms": ["linux"],
+      "source": "https://kubernetes.io/docs/concepts/cluster-administration/logging/",
+      "options": {
+        "ignore_timestamps": true,
+        "ignore_prefixes": ["stdout F", "stderr F"]
+      },
+      "lines": [
+        "2026-08-07T09:45:00.100000Z stdout F reconciled deployment api generation=41",
+        "2026-08-07T09:45:01.100000Z stdout F reconciled deployment api generation=42",
+        "2026-08-07T09:45:02.100000Z stderr F crash loop detected after repeated readiness probe failures"
+      ]
+    },
+    {
+      "name": "linux-journal-short-iso",
+      "format": "journalctl short-iso",
+      "workload": "os",
+      "platforms": ["linux"],
+      "source": "https://www.freedesktop.org/software/systemd/man/255/journalctl.html",
+      "options": {
+        "ignore_timestamps": true
+      },
+      "lines": [
+        "2026-08-07T09:50:00-05:00 devbox worker[321]: cache refresh complete key=41",
+        "2026-08-07T09:50:01-05:00 devbox worker[321]: cache refresh complete key=42",
+        "2026-08-07T09:50:02-05:00 devbox kernel: EXT4-fs error while writing the application database"
+      ]
+    },
+    {
+      "name": "rfc5424-syslog",
+      "format": "RFC 5424 syslog",
+      "workload": "os",
+      "platforms": ["linux", "macos"],
+      "source": "https://www.rfc-editor.org/info/rfc5424/",
+      "options": {
+        "similarity": 0.92
+      },
+      "lines": [
+        "<14>1 2026-08-07T14:55:00.100Z devbox worker 1234 HEARTBEAT - queue poll complete batch=41",
+        "<14>1 2026-08-07T14:55:01.100Z devbox worker 1234 HEARTBEAT - queue poll complete batch=42",
+        "<11>1 2026-08-07T14:55:02.100Z devbox worker 1234 HEARTBEAT - queue poll complete batch=43"
+      ]
+    },
+    {
+      "name": "macos-unified-log",
+      "format": "macOS unified log stream",
+      "workload": "os",
+      "platforms": ["macos"],
+      "source": "https://developer.apple.com/forums/thread/705868",
+      "options": {
+        "ignore_timestamps": true,
+        "similarity": 0.93
+      },
+      "lines": [
+        "2026-08-07 10:00:00.100 Df MyApp[123:456] [com.example.app:network] request completed id=41",
+        "2026-08-07 10:00:00.200 Df MyApp[123:456] [com.example.app:network] request completed id=42",
+        "2026-08-07 10:00:01.000 E MyApp[123:456] [com.example.app:network] request completed id=43"
+      ]
+    },
+    {
+      "name": "windows-event-json",
+      "format": "Get-WinEvent projected JSON",
+      "workload": "os",
+      "platforms": ["windows"],
+      "source": "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.diagnostics/get-winevent",
+      "options": {
+        "message_field": "Message"
+      },
+      "lines": [
+        "{\"TimeCreated\":\"2026-08-07T10:05:00-05:00\",\"Id\":1000,\"LevelDisplayName\":\"Information\",\"ProviderName\":\"AppHost\",\"Message\":\"Worker heartbeat completed batch=41\"}",
+        "{\"TimeCreated\":\"2026-08-07T10:05:01-05:00\",\"Id\":1000,\"LevelDisplayName\":\"Information\",\"ProviderName\":\"AppHost\",\"Message\":\"Worker heartbeat completed batch=42\"}",
+        "{\"TimeCreated\":\"2026-08-07T10:05:02-05:00\",\"Id\":1001,\"LevelDisplayName\":\"Error\",\"ProviderName\":\"AppHost\",\"Message\":\"Worker heartbeat completed batch=43\"}"
+      ]
+    },
+    {
+      "name": "opentelemetry-json",
+      "format": "OpenTelemetry flattened log record JSON",
+      "workload": "application",
+      "platforms": ["windows", "linux", "macos"],
+      "source": "https://opentelemetry.io/docs/specs/otel/protocol/file-exporter/",
+      "options": {
+        "message_field": "body.stringValue"
+      },
+      "lines": [
+        "{\"timeUnixNano\":\"1786115400000000000\",\"severityNumber\":9,\"severityText\":\"Info\",\"body\":{\"stringValue\":\"background sync completed page=41\"},\"traceId\":\"aaa\",\"spanId\":\"111\"}",
+        "{\"timeUnixNano\":\"1786115401000000000\",\"severityNumber\":9,\"severityText\":\"Info\",\"body\":{\"stringValue\":\"background sync completed page=42\"},\"traceId\":\"bbb\",\"spanId\":\"222\"}",
+        "{\"timeUnixNano\":\"1786115402000000000\",\"severityNumber\":17,\"severityText\":\"Error\",\"body\":{\"stringValue\":\"background sync completed page=43\"},\"traceId\":\"ccc\",\"spanId\":\"333\"}"
+      ]
+    }
+  ]
+}
