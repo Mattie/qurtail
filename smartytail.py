@@ -1,0 +1,589 @@
+"""Compress repetitive line-oriented output while preserving meaningful changes."""
+
+from __future__ import annotations
+
+import argparse
+from collections import deque
+import configparser
+from difflib import SequenceMatcher
+import json
+import os
+from pathlib import Path
+import re
+import sys
+import time
+from typing import Callable, Iterable, TextIO
+
+
+DEFAULT_HISTORY_SIZE = 100
+DEFAULT_SIMILARITY = 0.85
+DEFAULT_TAIL_LINES = 10
+DEFAULT_SPINNER = "|/-\\"
+RC_FILE_NAME = ".smartytailrc"
+
+ANSI_COLORS = {
+    "black": 30,
+    "red": 31,
+    "green": 32,
+    "yellow": 33,
+    "blue": 34,
+    "magenta": 35,
+    "cyan": 36,
+    "white": 37,
+    "bright_black": 90,
+    "bright_red": 91,
+    "bright_green": 92,
+    "bright_yellow": 93,
+    "bright_blue": 94,
+    "bright_magenta": 95,
+    "bright_cyan": 96,
+    "bright_white": 97,
+}
+
+TIMESTAMP_PREFIXES = tuple(
+    re.compile(pattern)
+    for pattern in (
+        r"^\s*\[?\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?\]?\s*",
+        r"^\s*\[?\d{2}:\d{2}:\d{2}(?:[.,]\d+)?\]?\s*",
+        r"^\s*[A-Z][a-z]{2}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+",
+        r"^\s*\[?\d{2}/[A-Za-z]{3}/\d{4}:\d{2}:\d{2}:\d{2}\s+[+-]\d{4}\]?\s*",
+    )
+)
+LOG_LEVEL_PREFIX = re.compile(
+    r"^\s*\[?(?:TRACE|DEBUG|INFO|NOTICE|WARN(?:ING)?|ERROR|CRITICAL|FATAL)\]?"
+    r"(?:\s*[:|-]\s*|\s+)",
+    re.IGNORECASE,
+)
+
+
+def _normalize_line(
+    line: str,
+    *,
+    ignore_timestamps: bool,
+    ignore_levels: bool,
+    ignore_prefixes: tuple[str, ...],
+) -> str:
+    """Remove configured log metadata before comparing line content."""
+    normalized = line.strip()
+    for _ in range(4):
+        previous = normalized
+        if ignore_timestamps:
+            for pattern in TIMESTAMP_PREFIXES:
+                normalized = pattern.sub("", normalized, count=1)
+        if ignore_levels:
+            normalized = LOG_LEVEL_PREFIX.sub("", normalized, count=1)
+        for prefix in ignore_prefixes:
+            if normalized.startswith(prefix):
+                normalized = normalized[len(prefix) :].lstrip(" \t:|-")
+        if normalized == previous:
+            break
+    return normalized
+
+
+def _json_comparable(
+    line: str,
+    *,
+    ignore_fields: tuple[str, ...],
+    message_field: str | None,
+) -> str:
+    """Return stable comparable text for a JSON object, or the original line."""
+    try:
+        value = json.loads(line)
+    except (json.JSONDecodeError, TypeError):
+        return line
+
+    if not isinstance(value, dict):
+        return line
+    if message_field and message_field in value:
+        message = value[message_field]
+        return message if isinstance(message, str) else json.dumps(message, sort_keys=True)
+
+    filtered = {key: item for key, item in value.items() if key not in ignore_fields}
+    return json.dumps(filtered, sort_keys=True, separators=(",", ":"))
+
+
+def _colorize(text: str, color: str | None, enabled: bool) -> str:
+    """Wrap text in an ANSI color when explicitly configured for a terminal."""
+    if not color or not enabled:
+        return text
+    return f"\x1b[{ANSI_COLORS[color]}m{text}\x1b[0m"
+
+
+class SmartTail:
+    """Write novel lines in full and represent similar recent lines with a marker."""
+
+    def __init__(
+        self,
+        output: TextIO,
+        *,
+        similarity: float = DEFAULT_SIMILARITY,
+        history_size: int = DEFAULT_HISTORY_SIZE,
+        marker: str = ".",
+        mode: str = "dots",
+        spinner: str = DEFAULT_SPINNER,
+        spinner_color: str | None = None,
+        dot_color: str | None = None,
+        ignore_timestamps: bool = False,
+        ignore_levels: bool = False,
+        ignore_prefixes: tuple[str, ...] = (),
+        ignore_fields: tuple[str, ...] = (),
+        message_field: str | None = None,
+        include_regex: str | None = None,
+        exclude_regex: str | None = None,
+        comparison_lines: Iterable[str] = (),
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        if not 0 <= similarity <= 1:
+            raise ValueError("similarity must be between 0 and 1")
+        if history_size < 1:
+            raise ValueError("history_size must be at least 1")
+        if not marker or "\n" in marker or "\r" in marker:
+            raise ValueError("marker must be non-empty and contain no newlines")
+        if mode not in {"dots", "spinner", "counts"}:
+            raise ValueError("mode must be 'dots', 'spinner', or 'counts'")
+        if not spinner or any(character in spinner for character in "\b\r\n"):
+            raise ValueError("spinner must be non-empty and contain no control characters")
+        for option, color in (("spinner_color", spinner_color), ("dot_color", dot_color)):
+            if color and color not in ANSI_COLORS:
+                raise ValueError(f"{option} must be a recognized color name")
+        try:
+            include_pattern = re.compile(include_regex) if include_regex else None
+            exclude_pattern = re.compile(exclude_regex) if exclude_regex else None
+        except re.error as error:
+            raise ValueError(f"invalid filter regex: {error}") from error
+
+        self._output = output
+        self._similarity = similarity
+        self._history: deque[str] = deque(maxlen=history_size)
+        self._marker = marker
+        self._mode = mode
+        self._spinner = spinner
+        self._spinner_color = spinner_color
+        self._dot_color = dot_color
+        self._color_enabled = bool(getattr(output, "isatty", lambda: False)())
+        self._spinner_index = 0
+        self._repeat_count = 0
+        self._repeat_started = 0.0
+        self._clock = clock
+        self._ignore_timestamps = ignore_timestamps
+        self._ignore_levels = ignore_levels
+        self._ignore_prefixes = ignore_prefixes
+        self._ignore_fields = ignore_fields
+        self._message_field = message_field
+        self._include_pattern = include_pattern
+        self._exclude_pattern = exclude_pattern
+        self._references = tuple(
+            self._comparable(line.rstrip("\r\n")) for line in comparison_lines
+        )
+        self._markers_open = False
+
+    def _comparable(self, line: str) -> str:
+        """Build the normalized representation used for similarity comparisons."""
+        structured = _json_comparable(
+            line,
+            ignore_fields=self._ignore_fields,
+            message_field=self._message_field,
+        )
+        return _normalize_line(
+            structured,
+            ignore_timestamps=self._ignore_timestamps,
+            ignore_levels=self._ignore_levels,
+            ignore_prefixes=self._ignore_prefixes,
+        )
+
+    def process(self, line: str) -> None:
+        """Process one input line and write its full or compressed representation."""
+        printable = line.rstrip("\r\n")
+        if self._include_pattern and not self._include_pattern.search(printable):
+            return
+        if self._exclude_pattern and self._exclude_pattern.search(printable):
+            return
+
+        comparable = self._comparable(printable)
+        repeated = any(
+            SequenceMatcher(None, comparable, previous).ratio() >= self._similarity
+            for previous in self._history
+        ) or any(
+            SequenceMatcher(None, comparable, reference).ratio() >= self._similarity
+            for reference in self._references
+        )
+        self._history.append(comparable)
+
+        if repeated:
+            now = self._clock()
+            if not self._markers_open:
+                self._repeat_started = now
+            self._repeat_count += 1
+            if self._mode == "spinner":
+                if self._markers_open:
+                    self._output.write("\b")
+                symbol = self._spinner[self._spinner_index % len(self._spinner)]
+                self._output.write(_colorize(symbol, self._spinner_color, self._color_enabled))
+                self._spinner_index += 1
+            elif self._mode == "counts":
+                if self._markers_open:
+                    self._output.write("\r")
+                elapsed = int(max(0, now - self._repeat_started))
+                noun = "line" if self._repeat_count == 1 else "lines"
+                self._output.write(
+                    f"[{self._repeat_count} similar {noun}, {elapsed}s]"
+                )
+            else:
+                self._output.write(
+                    _colorize(self._marker, self._dot_color, self._color_enabled)
+                )
+            self._output.flush()
+            self._markers_open = True
+            return
+
+        if self._markers_open:
+            self._output.write("\n")
+            self._markers_open = False
+            self._spinner_index = 0
+            self._repeat_count = 0
+
+        self._output.write(printable + "\n")
+        self._output.flush()
+
+    def finish(self) -> None:
+        """Close an unfinished marker run so the terminal prompt starts on a new line."""
+        if self._markers_open:
+            self._output.write("\n")
+            self._markers_open = False
+            self._spinner_index = 0
+            self._repeat_count = 0
+        self._output.flush()
+
+
+def compress(lines: Iterable[str], output: TextIO, **options: object) -> None:
+    """Compress a finite iterable of lines into the provided text stream."""
+    tail = SmartTail(output, **options)
+    for line in lines:
+        tail.process(line)
+    tail.finish()
+
+
+def _follow_file(path: Path, tail: SmartTail, poll_interval: float) -> None:
+    """Follow a path across appends, truncation, disappearance, and replacement."""
+    source: TextIO | None = None
+    first_open = True
+    try:
+        while True:
+            if source is None:
+                try:
+                    source = path.open("r", encoding="utf-8", errors="replace")
+                except FileNotFoundError:
+                    time.sleep(poll_interval)
+                    continue
+
+                if first_open:
+                    for line in deque(source, maxlen=DEFAULT_TAIL_LINES):
+                        tail.process(line)
+                    first_open = False
+                else:
+                    for line in source:
+                        tail.process(line)
+
+            line = source.readline()
+            if line:
+                tail.process(line)
+                continue
+
+            try:
+                path_stat = path.stat()
+                source_stat = os.fstat(source.fileno())
+            except FileNotFoundError:
+                time.sleep(poll_interval)
+                continue
+
+            if (path_stat.st_dev, path_stat.st_ino) != (
+                source_stat.st_dev,
+                source_stat.st_ino,
+            ):
+                source.close()
+                source = None
+                continue
+
+            if path_stat.st_size < source.tell():
+                source.seek(0)
+                continue
+
+            time.sleep(poll_interval)
+    finally:
+        if source is not None:
+            source.close()
+
+
+def _config_path(argv: list[str]) -> Path:
+    """Resolve the rc path before parsing options that may receive rc defaults."""
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--config", type=Path, default=Path.home() / RC_FILE_NAME)
+    args, _ = parser.parse_known_args(argv)
+    return args.config.expanduser()
+
+
+def _rc_bool(value: str) -> bool:
+    """Parse a conventional boolean value from an rc option."""
+    normalized = value.casefold()
+    if normalized in {"1", "yes", "true", "on"}:
+        return True
+    if normalized in {"0", "no", "false", "off"}:
+        return False
+    raise ValueError(f"expected a boolean, got {value!r}")
+
+
+def _rc_prefixes(value: str) -> tuple[str, ...]:
+    """Parse a comma-separated list of literal prefixes."""
+    return tuple(prefix.strip() for prefix in value.split(",") if prefix.strip())
+
+
+def _load_rc(path: Path) -> dict[str, object]:
+    """Load supported options from a smartytail rc file when it exists."""
+    if not path.exists():
+        return {}
+
+    config = configparser.ConfigParser(interpolation=None)
+    with path.open("r", encoding="utf-8") as source:
+        config.read_file(source)
+
+    if "smartytail" not in config:
+        raise ValueError("rc file must contain a [smartytail] section")
+
+    section = config["smartytail"]
+    converters = {
+        "similarity": float,
+        "history": int,
+        "marker": str,
+        "mode": str,
+        "spinner": str,
+        "spinner_color": str,
+        "dot_color": str,
+        "poll_interval": float,
+        "ignore_timestamps": _rc_bool,
+        "ignore_levels": _rc_bool,
+        "ignore_prefixes": _rc_prefixes,
+        "include_regex": str,
+        "exclude_regex": str,
+        "ignore_fields": _rc_prefixes,
+        "message_field": str,
+        "comparison_file": Path,
+    }
+    unknown = set(section) - set(converters)
+    if unknown:
+        names = ", ".join(sorted(unknown))
+        raise ValueError(f"unknown rc option: {names}")
+
+    try:
+        values = {name: converters[name](value) for name, value in section.items()}
+    except ValueError as error:
+        raise ValueError(f"invalid rc value: {error}") from error
+
+    comparison_file = values.get("comparison_file")
+    if isinstance(comparison_file, Path) and not comparison_file.is_absolute():
+        values["comparison_file"] = path.parent / comparison_file
+    return values
+
+
+def _build_parser(defaults: dict[str, object], config_path: Path) -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="smartytail",
+        description="Follow text while compacting lines similar to recent output.",
+    )
+    parser.add_argument("file", nargs="?", help="file to read; stdin when omitted")
+    parser.add_argument("-f", "--follow", action="store_true", help="wait for appended file data")
+    parser.add_argument(
+        "--config",
+        type=Path,
+        default=config_path,
+        metavar="PATH",
+        help=f"rc file (default: ~/{RC_FILE_NAME})",
+    )
+    parser.add_argument(
+        "--similarity",
+        type=float,
+        default=defaults.get("similarity", DEFAULT_SIMILARITY),
+        metavar="RATIO",
+        help="similarity ratio from 0 to 1 (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--history",
+        type=int,
+        default=defaults.get("history", DEFAULT_HISTORY_SIZE),
+        metavar="LINES",
+        help="number of recent lines to remember (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--marker",
+        default=defaults.get("marker", "."),
+        help="repeat marker (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=("dots", "spinner", "counts"),
+        default=defaults.get("mode", "dots"),
+        help="repeat display mode (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--spinner",
+        default=defaults.get("spinner", DEFAULT_SPINNER),
+        help="spinner character sequence (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--spinner-color",
+        choices=tuple(ANSI_COLORS),
+        default=defaults.get("spinner_color"),
+        help="spinner color for terminal output",
+    )
+    parser.add_argument(
+        "--dot-color",
+        choices=tuple(ANSI_COLORS),
+        default=defaults.get("dot_color"),
+        help="dot-marker color for terminal output",
+    )
+    parser.add_argument(
+        "--ignore-timestamps",
+        action=argparse.BooleanOptionalAction,
+        default=defaults.get("ignore_timestamps", False),
+        help="ignore recognized timestamp prefixes when comparing lines",
+    )
+    parser.add_argument(
+        "--ignore-levels",
+        action=argparse.BooleanOptionalAction,
+        default=defaults.get("ignore_levels", False),
+        help="ignore standard log-level prefixes when comparing lines",
+    )
+    parser.add_argument(
+        "--ignore-prefix",
+        "--ignore-prefixes",
+        action="extend",
+        type=_rc_prefixes,
+        dest="ignore_prefixes",
+        default=list(defaults.get("ignore_prefixes", ())),
+        metavar="TEXT",
+        help="ignore comma-separated literal line prefixes; may be repeated",
+    )
+    parser.add_argument(
+        "--include-regex",
+        default=defaults.get("include_regex"),
+        metavar="REGEX",
+        help="only process lines matching this regular expression",
+    )
+    parser.add_argument(
+        "--exclude-regex",
+        default=defaults.get("exclude_regex"),
+        metavar="REGEX",
+        help="skip lines matching this regular expression",
+    )
+    parser.add_argument(
+        "--ignore-field",
+        action="append",
+        dest="ignore_fields",
+        default=list(defaults.get("ignore_fields", ())),
+        metavar="NAME",
+        help="ignore a JSON field when comparing objects; may be repeated",
+    )
+    parser.add_argument(
+        "--message-field",
+        default=defaults.get("message_field"),
+        metavar="NAME",
+        help="compare this JSON field instead of the full object",
+    )
+    parser.add_argument(
+        "--comparison-file",
+        type=Path,
+        default=defaults.get("comparison_file"),
+        metavar="PATH",
+        help="suppress lines similar to entries in this reference file",
+    )
+    parser.add_argument(
+        "--poll-interval",
+        type=float,
+        default=defaults.get("poll_interval", 0.2),
+        metavar="SECONDS",
+        help="follow polling interval (default: %(default)s)",
+    )
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run the smartytail command and return its process exit status."""
+    arguments = sys.argv[1:] if argv is None else argv
+    config_path = _config_path(arguments)
+    try:
+        defaults = _load_rc(config_path)
+    except (OSError, configparser.Error, ValueError) as error:
+        raise SystemExit(f"smartytail: {config_path}: {error}") from error
+
+    parser = _build_parser(defaults, config_path)
+    args = parser.parse_args(arguments)
+
+    if not 0 <= args.similarity <= 1:
+        parser.error("--similarity must be between 0 and 1")
+    if args.history < 1:
+        parser.error("--history must be at least 1")
+    if args.poll_interval <= 0:
+        parser.error("--poll-interval must be greater than 0")
+    if not args.marker or "\n" in args.marker or "\r" in args.marker:
+        parser.error("--marker must be non-empty and contain no newlines")
+    if args.mode not in {"dots", "spinner", "counts"}:
+        parser.error("--mode must be 'dots', 'spinner', or 'counts'")
+    if not args.spinner or any(character in args.spinner for character in "\b\r\n"):
+        parser.error("--spinner must be non-empty and contain no control characters")
+    if args.follow and not args.file:
+        parser.error("--follow requires a file")
+
+    comparison_lines: list[str] = []
+    if args.comparison_file:
+        try:
+            comparison_lines = args.comparison_file.read_text(
+                encoding="utf-8", errors="replace"
+            ).splitlines()
+        except OSError as error:
+            parser.exit(1, f"smartytail: {args.comparison_file}: {error}\n")
+
+    try:
+        tail = SmartTail(
+            sys.stdout,
+            similarity=args.similarity,
+            history_size=args.history,
+            marker=args.marker,
+            mode=args.mode,
+            spinner=args.spinner,
+            spinner_color=args.spinner_color,
+            dot_color=args.dot_color,
+            ignore_timestamps=args.ignore_timestamps,
+            ignore_levels=args.ignore_levels,
+            ignore_prefixes=tuple(args.ignore_prefixes),
+            ignore_fields=tuple(args.ignore_fields),
+            message_field=args.message_field,
+            include_regex=args.include_regex,
+            exclude_regex=args.exclude_regex,
+            comparison_lines=comparison_lines,
+        )
+    except ValueError as error:
+        parser.error(str(error))
+
+    try:
+        if args.file:
+            path = Path(args.file)
+            if args.follow:
+                _follow_file(path, tail, args.poll_interval)
+            else:
+                with path.open("r", encoding="utf-8", errors="replace") as source:
+                    for line in deque(source, maxlen=DEFAULT_TAIL_LINES):
+                        tail.process(line)
+        else:
+            for line in sys.stdin:
+                tail.process(line)
+    except KeyboardInterrupt:
+        pass
+    except OSError as error:
+        parser.exit(1, f"smartytail: {error}\n")
+    finally:
+        tail.finish()
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

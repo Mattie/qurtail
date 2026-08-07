@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smartytail"
+version = "0.1.0"
+description = "Tail noisy logs while compacting similar recent lines"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+[project.scripts]
+smartytail = "smartytail:main"
+
+[tool.setuptools]
+py-modules = ["smartytail"]
