@@ -1,99 +1,12 @@
-# qurtail
+# qurtail to Quell Unwanted Repetition
 
-*Quell Unwanted Repetition with `qurtail`*
+Long-running logs have a bad habit of saying the same thing thousands of times with a new
+timestamp attached. That is tolerable when you're watching a terminal. It gets expensive and
+fairly useless when a coding agent has to read the whole thing.
 
-----
-
-`qurtail` is a small stream compactor built for coding agents. It is the normal way for an agent
-to follow a noisy log or run a command that is expected to produce long, repetitive output.
-
-It keeps the first example of each log pattern, recognizes common values that change on every
-line, and replaces later repetitions with buffered dot runs and compact closing counts. Warnings,
+`qurtail` gives the agent a smaller view of the stream. It prints the first example of a repeated
+pattern, shows dots while more copies arrive, and closes the run with an exact count. Warnings,
 errors, status changes, unfamiliar numbers, and multiline diagnostics stay visible.
-
-The result is a much smaller stream for the agent to read, with enough context to understand
-what repeated and how often.
-
-## Product Boundary
-
-Qurtail is a local streaming view over a file, standard input, or a child command. It does not
-store logs unless raw capture is explicitly requested, query history, diagnose failures, manage
-remote sources, alert people, send telemetry, call a model, or provide an observability service.
-The original file, captured raw output, or upstream stream remains the source of truth.
-
-The common path requires no project configuration.
-
-## Usage and Installation
-
-Run qurtail without installing it permanently:
-
-```bash
-uvx qurtail -F -n 50 app.log
-```
-
-Or install it as a standalone command:
-
-```bash
-uv tool install qurtail
-```
-
-```bash
-pipx install qurtail
-```
-
-Qurtail requires Python 3.11 or newer and has no runtime dependencies.
-
-Follow a file with its last 50 lines of context:
-
-```bash
-qurtail -F -n 50 app.log
-```
-
-`-f` and `-F` both keep following through truncation, replacement, and log rotation. `-n`
-controls how many existing lines are read when the file is opened. The default is 10, matching
-`tail`.
-
-When the agent launches a noisy command, use qurtail's command runner:
-
-```bash
-qurtail run -- pytest -q
-```
-
-Qurtail streams the child command's combined standard output and standard error through the same
-conservative reducer. Arguments after `--` are passed to the command without implicit shell
-interpretation. Interrupting qurtail interrupts and reaps the child process, and qurtail returns
-the child's success or failure status so a failed test, build, or installer cannot look successful
-merely because the compacting process exited normally.
-
-Use the runner when qurtail launches a container or cluster log command:
-
-```bash
-qurtail run -- docker logs -f api
-```
-
-```bash
-qurtail run -- kubectl logs -f deploy/api --timestamps
-```
-
-Qurtail can still read a live stream from standard input when another process owns the pipeline:
-
-```bash
-producer 2>&1 | qurtail
-```
-
-Without `-f` or `-F`, a file is read once and qurtail exits. With no file argument or `run`
-subcommand, qurtail reads standard input until the upstream stream closes.
-
-Run `qurtail -h` for the complete command reference.
-
-Each suppressed record produces one dot by default. For very busy sources, `--dot-every N`
-produces one dot for every N suppressed records:
-
-```bash
-qurtail -F --dot-every 10 app.log
-```
-
-### What the output looks like
 
 ```text
 > qurtail -F -n 50 app.log
@@ -103,71 +16,163 @@ qurtail -F --dot-every 10 app.log
 ..... [5 similar before stop]
 ```
 
-The first line from a pattern is always printed in full. Dots are the live activity signal while
-similar records continue. Qurtail buffers them into short runs before writing, which reduces agent
-output overhead without making an active stream look stalled. When the pattern changes, 30 seconds
-pass, or monitoring stops, qurtail closes the run with the exact repeat count and a newline.
-Summaries never use backspaces or carriage-return updates.
+A silent monitor is hard to distinguish from a stuck one. Qurtail leaves the dots as a small sign
+of life while keeping the output manageable.
 
-## How Matching Works
+## Install it
 
-Qurtail uses one conservative streaming signature reducer with bounded per-stream state. It builds
-an indexed signature for each visible pattern and recognizes a small set of corpus-proven volatile
-values such as:
+Qurtail requires Python 3.11 or newer. It has no runtime dependencies.
 
-- timestamps;
-- UUIDs;
-- request, trace, and span identifiers;
-- standard JSON log metadata; and
-- stable container or service prefixes.
+You can run it once with `uvx`:
 
-Unknown changing values remain visible. Qurtail does not use a broad fuzzy-similarity threshold,
-so a change such as `replication lag is 1 second` to `replication lag is 900 seconds` is printed in
-full. Unknown shapes, ambiguous values, malformed records, and uncertain multiline continuations
-also remain visible.
+```bash
+uvx qurtail -F -n 50 app.log
+```
 
-The matcher also keeps these records intact:
+Or install it as a command:
 
-- warning, error, and fatal transitions;
-- HTTP status changes;
-- changed structured error payloads;
-- same-level errors with different details; and
-- traceback, stack trace, and other multiline diagnostic blocks.
+```bash
+uv tool install qurtail
+```
 
-A suppressed record increments the count for its visible pattern. Repeated identical errors may be
-summarized after one complete exemplar; changed errors and their complete multiline diagnostics
-remain visible. A suppressed record cannot become a hidden example that causes another line to
-disappear later.
+```bash
+pipx install qurtail
+```
 
-## Raw Log Recovery
+## Follow a file
 
-Qurtail is a compact monitoring view. The followed file remains the source of truth whenever the
-agent needs the exact suppressed records. For child commands, request a raw transcript explicitly:
+```bash
+qurtail -F -n 50 app.log
+```
+
+`-n` is the number of existing lines to read when the file opens. The default is 10, like `tail`.
+Both `-f` and `-F` continue following when the file is truncated, replaced, or rotated.
+
+Leave off the follow flag when you want to compact a file once and exit:
+
+```bash
+qurtail app.log
+```
+
+For a particularly busy log, print one dot for every ten suppressed records:
+
+```bash
+qurtail -F --dot-every 10 app.log
+```
+
+Every suppressed record produces one dot by default. Qurtail buffers those dots into short runs
+before writing them, then closes the run with the exact repeat count and a newline when the pattern
+changes, 30 seconds pass, or monitoring stops. It doesn't redraw old terminal lines with
+backspaces or carriage returns, so captured output stays readable too.
+
+## Run a command
+
+If qurtail is launching the noisy command, use `run`:
+
+```bash
+qurtail run -- pytest -q
+```
+
+Everything after `--` is passed directly to the child command. There is no implicit shell in the
+middle interpreting pipes, substitutions, or redirects.
+
+Standard output and standard error are combined and sent through the same conservative reducer.
+Qurtail returns the child's success or failure status. If you interrupt qurtail, it interrupts and
+reaps the child process before exiting. A failed test run should still look like a failed test run;
+saving screen space is no excuse for losing the exit code.
+
+The same form works for container logs:
+
+```bash
+qurtail run -- docker logs -f api
+```
+
+```bash
+qurtail run -- kubectl logs -f deploy/api --timestamps
+```
+
+When another command already owns the pipeline, qurtail can read standard input:
+
+```bash
+producer 2>&1 | qurtail
+```
+
+With no filename and no `run` subcommand, it reads until standard input closes.
+
+Run `qurtail -h` for the complete command reference.
+
+## What counts as repetition?
+
+Qurtail uses bounded per-stream state to index patterns it has already printed. It recognizes a
+small, corpus-proven set of values that commonly change without changing the meaning of a log
+line:
+
+- timestamps
+- UUIDs
+- request, trace, and span IDs
+- standard JSON log metadata
+- stable container and service prefixes
+
+The matcher errs on the side of printing a line. It doesn't use a broad fuzzy-similarity score,
+since that is a good way to make an important number disappear. These two lines are different and
+both remain visible:
+
+```text
+replication lag is 1 second
+replication lag is 900 seconds
+```
+
+Unknown shapes, ambiguous values, and unfamiliar changing values also print in full. The same goes
+for malformed structured records and multiline content qurtail isn't sure how to join.
+
+Warning, error, and fatal transitions stay visible, along with HTTP status changes and changed
+structured error payloads. Same-level errors with different details get their own full record.
+Tracebacks, stack traces, and other multiline diagnostic blocks stay together. Repeated identical
+errors may be summarized after one complete example.
+
+Every suppressed record increments the count for its visible pattern. Suppressed records don't
+teach the matcher new patterns, so a hidden record cannot become the hidden example that makes some
+later line disappear.
+
+## Keep the raw output when you'll need it
+
+Qurtail is a viewing tool. The followed file, captured raw output, or upstream stream remains the
+source of truth.
+
+When qurtail runs the child command, `--raw-log` keeps a raw transcript:
 
 ```bash
 qurtail run --raw-log api.raw.log -- docker logs -f api
 ```
 
-For stdin-only sources, keep raw output upstream when recovery matters. For example:
+For a pipeline, keep the raw copy before the stream reaches qurtail:
 
 ```bash
 docker logs -f api 2>&1 | tee api.raw.log | qurtail
 ```
 
-Qurtail does not create its own transcript or retain a second copy of the stream unless
-`--raw-log` is supplied. Before drawing a conclusion that depends on a suppressed value, the agent
-consults the original file or captured raw output.
+Without `--raw-log`, qurtail doesn't create a transcript or keep a second copy. If your conclusion
+depends on one of the values that was summarized, check the original file or the captured raw log.
+The compact view tells you what repeated and how often. It cannot recover bytes you chose not to
+save.
 
-## Benchmarks
+## What qurtail doesn't do
 
-The benchmark suite includes regression fixtures, held-out monitoring episodes, and large-corpus runs. 
+Qurtail compacts a live local stream while it passes through. It doesn't store logs unless you ask
+for raw capture, query history, diagnose failures, manage remote sources, alert people, send
+telemetry, call a model, or provide an observability service. The common path requires no project
+configuration.
 
-The suite runs installed-command smoke tests on Linux, macOS, and Windows. See more in
-`benchmarks/README.md`.
+## Benchmarks and tests
 
-## Skills
+The benchmark suite includes regression fixtures, held-out monitoring episodes, and large-corpus
+runs. Installed-command smoke tests run on Linux, macOS, and Windows.
 
-The included `qurtail-fluency` agent skill makes qurtail the default for verbose tests, builds,
+See [`benchmarks/README.md`](benchmarks/README.md) for more.
+
+## Agent skill
+
+The included `qurtail-fluency` skill makes qurtail the default for verbose tests, builds,
 installers, development servers, services, container and Kubernetes workloads, and followed logs.
 
 ## Changelog
