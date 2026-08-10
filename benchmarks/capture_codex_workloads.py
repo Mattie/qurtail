@@ -17,7 +17,6 @@ ROOT = Path(__file__).resolve().parents[1]
 BENCHMARKS_PATH = ROOT / "benchmarks"
 CORPUS_PATH = BENCHMARKS_PATH / "codex-workload-corpus.json"
 REPORT_PATH = BENCHMARKS_PATH / "codex-workload-comparison.md"
-REPLAY_CONFIG_PATH = BENCHMARKS_PATH / "codex-workload-replay.toml"
 ENCODING_NAME = "o200k_base"
 REPEATS = 2
 DEPENDENCY_HELP = (
@@ -79,12 +78,21 @@ WORKLOADS = (
         title="Compression regression suite",
         project="qurtail",
         technology="Python / unittest",
-        purpose="Check qurtail's comparison, filtering, severity, and display behavior.",
+        purpose="Check qurtail's matching, diagnostics, summaries, and CLI behavior.",
         root_env=None,
         launcher="python",
-        arguments=("-m", "unittest", "test_qurtail.CompressTests", "-v"),
+        arguments=(
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_qurtail.py",
+            "-v",
+        ),
         original_agent_command=(
-            "PYTHONPATH=tests python -m unittest test_qurtail.CompressTests -v"
+            "python -m unittest discover -s tests -p test_qurtail.py -v"
         ),
         source_observation="The source qurtail task recorded this suite passing.",
         success_signal="OK",
@@ -271,8 +279,8 @@ def _capture() -> dict[str, object]:
             sys.executable,
             "-m",
             "qurtail",
-            "-c",
-            str(REPLAY_CONFIG_PATH),
+            "--dot-every",
+            "10",
         ]
         replay_exit_code, replay_output = _run(
             replay_command,
@@ -304,10 +312,7 @@ def _capture() -> dict[str, object]:
                 "repeats": REPEATS,
                 "runs": runs,
                 "qurtail": {
-                    "command": (
-                        "python -m qurtail -c "
-                        "benchmarks/codex-workload-replay.toml"
-                    ),
+                    "command": "python -m qurtail --dot-every 10",
                     "exit_code": replay_exit_code,
                     "output": replay_output,
                 },
@@ -315,6 +320,8 @@ def _capture() -> dict[str, object]:
         )
 
     return {
+        "status": "current-capture",
+        "release_evidence": False,
         "methodology": (
             "Commands selected from Codex task records in multiple local Git "
             "projects were run twice by this Codex task. The exact command output received "
@@ -392,7 +399,7 @@ Tokenizer: `tiktoken {tiktoken.__version__}`, encoding `{ENCODING_NAME}`.
 | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |
 {chr(10).join(rows)}
 
-Qurtail replay command: `python -m qurtail -c benchmarks/codex-workload-replay.toml`.
+Qurtail replay command: `python -m qurtail --dot-every 10`.
 
 ## Limits
 
@@ -400,7 +407,7 @@ The task records establish which commands earlier agents used and their reported
 
 The captured material is completed command output replayed after each run. Live file-follow performance, unattended agent completion, diagnosis quality, and broad tool superiority are outside this comparison.
 
-The replay config uses `similarity = 1.0` after path and timing normalization. These rows measure repeat-command compression rather than fuzzy-match quality.
+The replay uses qurtail's built-in conservative signatures after path and timing normalization. These rows measure repeat-command compression; held-out monitoring episodes provide the matcher safety evidence.
 
 Re-capture requires the three private project-root environment variables named in `capture_codex_workloads.py`; their values are never written to the artifacts. Then run `python benchmarks/capture_codex_workloads.py` after installing `benchmarks/requirements.txt`.
 """

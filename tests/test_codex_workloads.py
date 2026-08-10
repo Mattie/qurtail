@@ -20,7 +20,7 @@ from benchmarks.capture_codex_workloads import (
 
 
 class CodexWorkloadCorpusTests(unittest.TestCase):
-    """Keep the live capture explicit, successful, and free of local path leakage."""
+    """Keep workload evidence explicit, internally consistent, and sanitized."""
 
     def test_corpus_records_every_workload_and_successful_replay(self) -> None:
         corpus = json.loads(CORPUS_PATH.read_text(encoding="utf-8"))
@@ -28,25 +28,27 @@ class CodexWorkloadCorpusTests(unittest.TestCase):
         workloads = {workload.name: workload for workload in WORKLOADS}
 
         self.assertIn("multiple local Git projects", corpus["methodology"])
-        self.assertEqual(
-            {case["name"] for case in cases},
-            {workload.name for workload in WORKLOADS},
-        )
+        self.assertIn(corpus["status"], {"historical-pre-1.0", "current-capture"})
+        self.assertFalse(corpus["release_evidence"])
         self.assertEqual(len({case["project"] for case in cases}), len(cases))
         self.assertGreaterEqual(len({case["technology"] for case in cases}), 3)
         for case in cases:
             with self.subTest(case=case["name"]):
-                workload = workloads[case["name"]]
-                self.assertEqual(case["project"], workload.project)
-                self.assertEqual(case["technology"], workload.technology)
-                self.assertEqual(
-                    case["original_agent_command"],
-                    workload.original_agent_command,
-                )
-                self.assertEqual(
-                    case["source_observation"], workload.source_observation
-                )
-                self.assertEqual(case["success_signal"], workload.success_signal)
+                self.assertTrue(case["original_agent_command"])
+                if corpus["status"] == "current-capture":
+                    workload = workloads[case["name"]]
+                    self.assertEqual(
+                        case["original_agent_command"],
+                        workload.original_agent_command,
+                    )
+                    self.assertEqual(case["project"], workload.project)
+                    self.assertEqual(case["technology"], workload.technology)
+                    self.assertEqual(
+                        case["source_observation"], workload.source_observation
+                    )
+                    self.assertEqual(
+                        case["success_signal"], workload.success_signal
+                    )
                 self.assertEqual(case["repeats"], REPEATS)
                 self.assertEqual(len(case["runs"]), REPEATS)
                 self.assertEqual(
@@ -125,20 +127,20 @@ class CodexWorkloadCorpusTests(unittest.TestCase):
     def test_comparison_report_exists_and_states_its_limits(self) -> None:
         report = REPORT_PATH.read_text(encoding="utf-8")
 
-        self.assertIn("# Codex live workload replay", report)
+        self.assertIn("# Historical pre-1.0 Codex workload replay", report)
+        self.assertIn("current release gates.", report)
         self.assertIn("real qurtail CLI", report)
         self.assertIn("separate local Git projects", report)
         self.assertIn("## Original agent command lines", report)
         self.assertIn("copied from its Codex task record", report)
-        for workload in WORKLOADS:
+        corpus = json.loads(CORPUS_PATH.read_text(encoding="utf-8"))
+        for case in corpus["cases"]:
             self.assertEqual(
-                report.count(f"`{workload.original_agent_command}`"),
+                report.count(f"`{case['original_agent_command']}`"),
                 1,
             )
         self.assertIn("fresh reruns of those source commands", report)
         self.assertIn("do not claim byte-for-byte identity", report)
-        self.assertIn("similarity = 1.0", report)
-        self.assertIn("rather than fuzzy-match quality", report)
         self.assertIn("Live file-follow performance", report)
 
 

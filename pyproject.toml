@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "qurtail"
-version = "0.1.0"
-description = "Tail noisy logs while compacting similar recent lines"
+version = "1.0.0"
+description = "Follow logs while compacting conservative repeated patterns"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 
 [project.scripts]

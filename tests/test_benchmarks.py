@@ -1,68 +1,141 @@
-"""Verify the documented benchmark matrix without optional report dependencies."""
+"""Verify held-out monitoring episodes without optional token dependencies."""
 
-from collections import Counter
+from __future__ import annotations
+
+import json
+import re
 import unittest
 
 from benchmarks.run_benchmarks import (
-    BENCHMARKS_PATH,
-    SCENARIOS,
-    _grep,
-    _has_marker_line,
-    _load_cases,
-    _qurtail,
-    _stream,
+    EPISODES,
+    ROOT,
+    SKILL_PATH,
+    _qurtail_output,
+    evaluate_logical_clock_replay,
+    evaluate_suite,
 )
 
 
-class BenchmarkMatrixTests(unittest.TestCase):
-    """Keep the role matrix complete and each scenario behaviorally meaningful."""
+DISCOVERY_SKILL_PATH = (
+    ROOT / ".agents" / "skills" / "qurtail-fluency" / "SKILL.md"
+)
+SKILL_UI_PATH = SKILL_PATH.parent / "agents" / "openai.yaml"
+DISCOVERY_SKILL_UI_PATH = DISCOVERY_SKILL_PATH.parent / "agents" / "openai.yaml"
 
-    def test_matrix_has_three_unique_scenarios_per_role(self) -> None:
+
+def _portable_token_count(text: str) -> int:
+    """Provide a stable dependency-free token proxy for regression tests."""
+    return len(re.findall(r"\w+|[^\w\s]", text, re.UNICODE))
+
+
+class MonitoringEpisodeTests(unittest.TestCase):
+    """Keep safety gates independent from the tuned matcher fixtures."""
+
+    def test_agent_skill_is_short_and_uses_the_shipped_cli(self) -> None:
+        skill = SKILL_PATH.read_text(encoding="utf-8")
+        words = re.findall(r"\b[\w-]+\b", skill, re.UNICODE)
+
         self.assertEqual(
-            Counter(scenario.role for scenario in SCENARIOS),
+            DISCOVERY_SKILL_PATH.read_text(encoding="utf-8"),
+            skill,
+        )
+        self.assertEqual(
+            DISCOVERY_SKILL_UI_PATH.read_bytes(),
+            SKILL_UI_PATH.read_bytes(),
+        )
+        self.assertLess(len(words), 200)
+        for command in (
+            "qurtail -F -n 50 app.log",
+            "qurtail run -- COMMAND...",
+            "qurtail run --raw-log app.raw.log -- COMMAND...",
+            "--dot-every 10",
+            "tee app.raw.log | qurtail",
+        ):
+            self.assertIn(command, skill)
+        for removed_option in ("--similarity", "--history", "--config", "--mode"):
+            self.assertNotIn(removed_option, skill)
+
+    def test_historical_paired_agent_report_is_not_current_release_evidence(self) -> None:
+        report = json.loads(
+            (ROOT / "benchmarks" / "paired-agent-results.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(report["status"], "historical-pre-1.0")
+        self.assertFalse(report["release_evidence"])
+        self.assertIn("evaluated inputs", report["historical_note"])
+        self.assertTrue(report["inputs"]["qurtail_sha256"])
+        self.assertTrue(report["inputs"]["skill_sha256"])
+
+    def test_episode_matrix_covers_the_documented_safety_cases(self) -> None:
+        self.assertEqual(
+            {episode.category for episode in EPISODES},
             {
-                "Software engineer": 3,
-                "IT operator": 3,
-                "Database administrator": 3,
+                "error",
+                "status",
+                "structured-error",
+                "multiline",
+                "resumed-pattern",
+                "numeric-change",
+                "fail-open",
             },
         )
         self.assertEqual(
-            len({scenario.slug for scenario in SCENARIOS}),
-            len(SCENARIOS),
+            len({episode.slug for episode in EPISODES}),
+            len(EPISODES),
         )
-        self.assertEqual(
-            len({scenario.case_name for scenario in SCENARIOS}),
-            len(SCENARIOS),
+        for episode in EPISODES:
+            with self.subTest(episode=episode.slug):
+                self.assertTrue(episode.task)
+                self.assertTrue(episode.expected_decision)
+                self.assertTrue(episode.required_blocks)
+
+    def test_every_required_diagnostic_block_remains_complete(self) -> None:
+        for episode in EPISODES:
+            with self.subTest(episode=episode.slug):
+                output = _qurtail_output(episode.lines)
+                for block in episode.required_blocks:
+                    self.assertIn("\n".join(block) + "\n", output)
+
+    def test_dependency_free_gate_replay_passes(self) -> None:
+        result = evaluate_suite(_portable_token_count)
+
+        self.assertTrue(result["passed"], result)
+        self.assertGreaterEqual(
+            result["summary"]["median_repetitive_token_reduction"],
+            0.80,
+        )
+        self.assertLessEqual(
+            result["summary"]["maximum_nonrepetitive_token_inflation"],
+            0.02,
+        )
+        self.assertTrue(
+            all(
+                episode["all_required_blocks_visible"]
+                for episode in result["episodes"]
+            )
         )
 
-    def test_generated_artifact_set_matches_the_matrix(self) -> None:
-        expected = {scenario.slug for scenario in SCENARIOS}
-
-        self.assertEqual(
-            {path.stem for path in BENCHMARKS_PATH.glob("*.md")},
-            expected | {"codex-workload-comparison"},
-        )
-        self.assertEqual(
-            {path.stem for path in BENCHMARKS_PATH.glob("*.toml")},
-            expected | {"codex-workload-replay"},
-        )
-
-    def test_every_scenario_retains_its_measured_signals(self) -> None:
-        cases = _load_cases()
-
-        for scenario in SCENARIOS:
-            with self.subTest(scenario=scenario.slug):
-                lines, baseline, failure = _stream(
-                    cases[scenario.case_name], scenario
+    def test_nonrepetitive_episodes_are_emitted_without_rewrites(self) -> None:
+        for episode in EPISODES:
+            if episode.repetitive:
+                continue
+            with self.subTest(episode=episode.slug):
+                self.assertEqual(
+                    _qurtail_output(episode.lines),
+                    "".join(line + "\n" for line in episode.lines),
                 )
-                grep_output = _grep(lines, scenario.grep_pattern)
-                qurtail_output = _qurtail(lines, scenario.options)
 
-                self.assertNotIn(baseline, grep_output)
-                self.assertIn(failure, grep_output)
-                self.assertIn(baseline, qurtail_output)
-                self.assertIn(failure, qurtail_output)
-                self.assertTrue(_has_marker_line(qurtail_output))
+    def test_logical_clock_replay_closes_periodic_summary_without_sleeping(self) -> None:
+        result = evaluate_logical_clock_replay()
+
+        self.assertTrue(result["passed"], result)
+        self.assertEqual(result["source_duration_seconds"], 31.0)
+        self.assertEqual(result["wall_clock_sleep_seconds"], 0.0)
+        self.assertEqual(
+            result["output"],
+            "INFO worker heartbeat\n. [1 similar in 30s]\n",
+        )
 
 
 if __name__ == "__main__":

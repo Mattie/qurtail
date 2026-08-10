@@ -1,0 +1,279 @@
+{
+  "schema_version": 1,
+  "description": "Large, naturally ordered logs for evaluating qurtail on realistic monitoring workloads.",
+  "datasets": [
+    {
+      "id": "loghub-apache",
+      "title": "Loghub Apache error log",
+      "family": "server",
+      "provenance_url": "https://github.com/logpai/loghub/tree/dd61d0952749ee7963bde24220d1be5ede023033/Apache",
+      "source_revision": "dd61d0952749ee7963bde24220d1be5ede023033",
+      "license": {
+        "status": "local-research",
+        "url": "https://github.com/logpai/loghub/blob/dd61d0952749ee7963bde24220d1be5ede023033/LICENSE",
+        "note": "Research or academic use with repository attribution and citation. Keep outside distributable packages."
+      },
+      "official_line_count": 56481,
+      "expected_line_count": 56482,
+      "minimum_line_count": 56000,
+      "artifacts": [
+        {
+          "filename": "Apache.tar.gz",
+          "url": "https://zenodo.org/api/records/8196385/files/Apache.tar.gz/content",
+          "size": 262905,
+          "checksum": "md5:de9a42d12f9b60612631c67a5a9f8628",
+          "archive": "tar.gz"
+        }
+      ],
+      "log_globs": ["**/*.log"],
+      "label_globs": [],
+      "ground_truth": null
+    },
+    {
+      "id": "loghub-linux",
+      "title": "Loghub Linux system log",
+      "family": "operating-system",
+      "provenance_url": "https://github.com/logpai/loghub/tree/dd61d0952749ee7963bde24220d1be5ede023033/Linux",
+      "source_revision": "dd61d0952749ee7963bde24220d1be5ede023033",
+      "license": {
+        "status": "local-research",
+        "url": "https://github.com/logpai/loghub/blob/dd61d0952749ee7963bde24220d1be5ede023033/LICENSE",
+        "note": "Research or academic use with repository attribution and citation. Keep outside distributable packages."
+      },
+      "official_line_count": 25567,
+      "expected_line_count": 25567,
+      "minimum_line_count": 25000,
+      "artifacts": [
+        {
+          "filename": "Linux.tar.gz",
+          "url": "https://zenodo.org/api/records/8196385/files/Linux.tar.gz/content",
+          "size": 232039,
+          "checksum": "md5:6d1802d7778126f21c001c6aa7b6b106",
+          "archive": "tar.gz"
+        }
+      ],
+      "log_globs": ["**/*.log"],
+      "label_globs": [],
+      "ground_truth": null
+    },
+    {
+      "id": "loghub-zookeeper",
+      "title": "Loghub ZooKeeper service log",
+      "family": "distributed-system",
+      "provenance_url": "https://github.com/logpai/loghub/tree/dd61d0952749ee7963bde24220d1be5ede023033/Zookeeper",
+      "source_revision": "dd61d0952749ee7963bde24220d1be5ede023033",
+      "license": {
+        "status": "local-research",
+        "url": "https://github.com/logpai/loghub/blob/dd61d0952749ee7963bde24220d1be5ede023033/LICENSE",
+        "note": "Research or academic use with repository attribution and citation. Keep outside distributable packages."
+      },
+      "official_line_count": 74380,
+      "expected_line_count": 74380,
+      "minimum_line_count": 74000,
+      "artifacts": [
+        {
+          "filename": "Zookeeper.tar.gz",
+          "url": "https://zenodo.org/api/records/8196385/files/Zookeeper.tar.gz/content",
+          "size": 459911,
+          "checksum": "md5:11458b4f9fa0911c238f5c1189d4f2d4",
+          "archive": "tar.gz"
+        }
+      ],
+      "log_globs": ["**/*.log"],
+      "label_globs": [],
+      "ground_truth": null
+    },
+    {
+      "id": "loghub-hadoop",
+      "title": "Loghub Hadoop MapReduce logs",
+      "family": "distributed-system",
+      "provenance_url": "https://github.com/logpai/loghub/tree/dd61d0952749ee7963bde24220d1be5ede023033/Hadoop",
+      "source_revision": "dd61d0952749ee7963bde24220d1be5ede023033",
+      "license": {
+        "status": "local-research",
+        "url": "https://github.com/logpai/loghub/blob/dd61d0952749ee7963bde24220d1be5ede023033/LICENSE",
+        "note": "Research or academic use with repository attribution and citation. Keep outside distributable packages."
+      },
+      "official_line_count": 394308,
+      "expected_line_count": 394310,
+      "minimum_line_count": 390000,
+      "artifacts": [
+        {
+          "filename": "Hadoop.zip",
+          "url": "https://zenodo.org/api/records/8196385/files/Hadoop.zip/content",
+          "size": 3416419,
+          "checksum": "md5:34e28a9943704fd54933e2b455829fcc",
+          "archive": "zip"
+        }
+      ],
+      "log_globs": ["**/*.log"],
+      "label_globs": ["**/*label*.txt", "**/*label*.csv"],
+      "ground_truth": {
+        "kind": "application-list",
+        "path": "abnormal_label.txt",
+        "unit": "application",
+        "expected_anomaly_units": 44
+      }
+    },
+    {
+      "id": "loghub-openstack",
+      "title": "Loghub OpenStack infrastructure logs",
+      "family": "distributed-system",
+      "provenance_url": "https://github.com/logpai/loghub/tree/dd61d0952749ee7963bde24220d1be5ede023033/OpenStack",
+      "source_revision": "dd61d0952749ee7963bde24220d1be5ede023033",
+      "license": {
+        "status": "local-research",
+        "url": "https://github.com/logpai/loghub/blob/dd61d0952749ee7963bde24220d1be5ede023033/LICENSE",
+        "note": "Research or academic use with repository attribution and citation. Keep outside distributable packages."
+      },
+      "official_line_count": 207820,
+      "expected_line_count": 207820,
+      "minimum_line_count": 200000,
+      "artifacts": [
+        {
+          "filename": "OpenStack.tar.gz",
+          "url": "https://zenodo.org/api/records/8196385/files/OpenStack.tar.gz/content",
+          "size": 5394691,
+          "checksum": "md5:66bd42c07837a094d9b0ea2d036b5713",
+          "archive": "tar.gz"
+        }
+      ],
+      "log_globs": ["**/*.log"],
+      "label_globs": ["**/*label*.txt", "**/*label*.csv"],
+      "ground_truth": {
+        "kind": "identifier-list",
+        "path": "anomaly_labels.txt",
+        "unit": "vm-instance",
+        "expected_anomaly_units": 4
+      }
+    },
+    {
+      "id": "loghub-openssh",
+      "title": "Loghub OpenSSH server log",
+      "family": "server",
+      "provenance_url": "https://github.com/logpai/loghub/tree/dd61d0952749ee7963bde24220d1be5ede023033/OpenSSH",
+      "source_revision": "dd61d0952749ee7963bde24220d1be5ede023033",
+      "license": {
+        "status": "local-research",
+        "url": "https://github.com/logpai/loghub/blob/dd61d0952749ee7963bde24220d1be5ede023033/LICENSE",
+        "note": "Research or academic use with repository attribution and citation. Keep outside distributable packages."
+      },
+      "official_line_count": 655146,
+      "expected_line_count": 655147,
+      "minimum_line_count": 650000,
+      "artifacts": [
+        {
+          "filename": "SSH.tar.gz",
+          "url": "https://zenodo.org/api/records/8196385/files/SSH.tar.gz/content",
+          "size": 4596666,
+          "checksum": "md5:a44e40b4348697dabf2bba56885e0a38",
+          "archive": "tar.gz"
+        }
+      ],
+      "log_globs": ["**/*.log"],
+      "label_globs": [],
+      "ground_truth": null
+    },
+    {
+      "id": "loghub-bgl",
+      "title": "Loghub Blue Gene/L supercomputer log",
+      "family": "supercomputer",
+      "provenance_url": "https://github.com/logpai/loghub/tree/dd61d0952749ee7963bde24220d1be5ede023033/BGL",
+      "source_revision": "dd61d0952749ee7963bde24220d1be5ede023033",
+      "license": {
+        "status": "local-research",
+        "url": "https://github.com/logpai/loghub/blob/dd61d0952749ee7963bde24220d1be5ede023033/LICENSE",
+        "note": "Research or academic use with repository attribution and citation. Keep outside distributable packages."
+      },
+      "official_line_count": 4747963,
+      "expected_line_count": 4747963,
+      "minimum_line_count": 4700000,
+      "artifacts": [
+        {
+          "filename": "BGL.zip",
+          "url": "https://zenodo.org/api/records/8196385/files/BGL.zip/content",
+          "size": 57489019,
+          "checksum": "md5:4452953c470f2d95fcb32d5f6e733f7a",
+          "archive": "zip"
+        }
+      ],
+      "log_globs": ["**/*.log"],
+      "label_globs": [],
+      "ground_truth": {
+        "kind": "inline-field",
+        "field_index": 0,
+        "normal_value": "-",
+        "unit": "line",
+        "expected_anomaly_units": 348460
+      }
+    },
+    {
+      "id": "loghub-hdfs-v1",
+      "title": "Loghub HDFS v1 log and anomaly labels",
+      "family": "distributed-system",
+      "provenance_url": "https://github.com/logpai/loghub/tree/dd61d0952749ee7963bde24220d1be5ede023033/HDFS",
+      "source_revision": "dd61d0952749ee7963bde24220d1be5ede023033",
+      "license": {
+        "status": "local-research",
+        "url": "https://github.com/logpai/loghub/blob/dd61d0952749ee7963bde24220d1be5ede023033/LICENSE",
+        "note": "Research or academic use with repository attribution and citation. Keep outside distributable packages."
+      },
+      "official_line_count": 11175629,
+      "expected_line_count": 11175629,
+      "minimum_line_count": 11100000,
+      "artifacts": [
+        {
+          "filename": "HDFS_v1.zip",
+          "url": "https://zenodo.org/api/records/8196385/files/HDFS_v1.zip/content",
+          "size": 186645559,
+          "checksum": "md5:76a24b4d9a6164d543fb275f89773260",
+          "archive": "zip"
+        }
+      ],
+      "log_globs": ["**/*.log"],
+      "label_globs": ["**/*label*.csv"],
+      "ground_truth": {
+        "kind": "block-label-csv",
+        "path": "preprocessed/anomaly_label.csv",
+        "unit": "block",
+        "expected_anomaly_units": 16838
+      }
+    },
+    {
+      "id": "nasa-http",
+      "title": "NASA Kennedy Space Center HTTP requests, July and August 1995",
+      "family": "access",
+      "provenance_url": "https://ita.ee.lbl.gov/html/contrib/NASA-HTTP.html",
+      "source_revision": "1995-07-01--1995-08-31",
+      "license": {
+        "status": "local-research",
+        "url": "https://ita.ee.lbl.gov/html/contrib/NASA-HTTP.html",
+        "note": "The archive permits redistribution and asks that analysis remain limited to general traffic patterns. Keep local because records preserve originating hosts and requests."
+      },
+      "official_line_count": 3461612,
+      "expected_line_count": 3461613,
+      "minimum_line_count": 3400000,
+      "artifacts": [
+        {
+          "filename": "NASA_access_log_Jul95.gz",
+          "url": "https://ita.ee.lbl.gov/traces/NASA_access_log_Jul95.gz",
+          "size": 20676672,
+          "checksum": "sha256:199109ed0f273e095da6ccd5fc9dc4cd8bb58daa06d62135e62090fea9d27488",
+          "archive": "gzip",
+          "output": "NASA_access_log_Jul95.log"
+        },
+        {
+          "filename": "NASA_access_log_Aug95.gz",
+          "url": "https://ita.ee.lbl.gov/traces/NASA_access_log_Aug95.gz",
+          "size": 16633316,
+          "checksum": "sha256:14995aed0ba4558ab832613ebea9a3ef2d87cb4297fc67f5694e0032bbb6b788",
+          "archive": "gzip",
+          "output": "NASA_access_log_Aug95.log"
+        }
+      ],
+      "log_globs": ["*.log"],
+      "label_globs": [],
+      "ground_truth": null
+    }
+  ]
+}

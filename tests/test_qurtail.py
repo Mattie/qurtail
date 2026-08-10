@@ -1,1184 +1,1017 @@
-"""Tests for qurtail's documented stream compression behavior."""
+"""Verify qurtail's conservative matching, streaming output, and CLI contract."""
 
+from __future__ import annotations
+
+from contextlib import redirect_stderr
 from io import StringIO
-import json
 import os
 from pathlib import Path
-import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
+from unittest.mock import patch
 
-from qurtail import compress
-
-
-CORPUS_PATH = Path(__file__).parent / "fixtures" / "log_corpus.json"
-
-
-class TerminalBuffer(StringIO):
-    """String buffer that behaves like an interactive terminal for color tests."""
-
-    def isatty(self) -> bool:
-        return True
+import qurtail
+from qurtail import _StreamReducer, _signature, main
 
 
-class CompressTests(unittest.TestCase):
-    """Exercise line similarity, marker output, and recent-history limits."""
+class FakeClock:
+    """Provide explicit logical time to streaming tests."""
 
-    def test_readme_style_output(self) -> None:
+    def __init__(self, now: float = 0.0) -> None:
+        self.now = now
+
+    def __call__(self) -> float:
+        return self.now
+
+
+class SignalingBuffer(StringIO):
+    """Signal when a live timer writes a closing summary."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.summary_written = threading.Event()
+
+    def write(self, text: str) -> int:
+        result = super().write(text)
+        if "similar in" in text:
+            self.summary_written.set()
+        return result
+
+
+class StreamReducerTests(unittest.TestCase):
+    """Keep compression exact, bounded, fail-open, and line oriented."""
+
+    def run_stream(
+        self, lines: list[str], **options: object
+    ) -> tuple[str, _StreamReducer]:
         output = StringIO()
-        lines = ["starting worker 17\n"]
-        lines.extend(f"starting worker {number}\n" for number in range(18, 23))
-        lines.append("connection reset by peer\n")
-        lines.extend("connection reset by peer\n" for _ in range(30))
-        lines.append("finished batch 42\n")
+        reducer = _StreamReducer(output, **options)
+        for line in lines:
+            reducer.process(line)
+        reducer.finish()
+        return output.getvalue(), reducer
 
-        compress(lines, output)
+    def test_first_example_is_visible_and_known_volatile_values_repeat(self) -> None:
+        first = (
+            "2026-08-08T12:00:00Z INFO refreshed cache "
+            "request_id=715a"
+        )
+        repeat = (
+            "2026-08-08T12:00:01Z INFO refreshed cache "
+            "request_id=82bf"
+        )
+
+        output, _ = self.run_stream([first, repeat])
+
+        self.assertEqual(
+            output,
+            first + "\n. [1 similar before stop]\n",
+        )
+
+    def test_input_byte_order_mark_is_removed_from_the_first_record(self) -> None:
+        output, _ = self.run_stream(["\ufeffheartbeat", "heartbeat"])
+
+        self.assertEqual(output, "heartbeat\n. [1 similar before stop]\n")
+
+    def test_uuid_values_are_recognized_without_hiding_other_changes(self) -> None:
+        first = "INFO completed request 21bb6a55-7354-4b15-9d8d-42ff1e84b89d"
+        repeat = "INFO completed request 564e5727-9465-44bb-8679-0c1465036a3b"
+        changed = "INFO failed request 4a1e5ce4-38dd-46ae-9f47-dd76c7d033b3"
+
+        output, _ = self.run_stream([first, repeat, changed])
+
+        self.assertEqual(
+            output,
+            first + "\n. [1 similar in 0s]\n" + changed + "\n",
+        )
+
+    def test_unknown_numeric_changes_remain_visible(self) -> None:
+        lines = [
+            "replication lag is 1 second",
+            "replication lag is 900 seconds",
+            "worker 17 finished batch 41",
+            "worker 18 finished batch 42",
+        ]
+
+        output, _ = self.run_stream(lines)
+
+        self.assertEqual(output, "".join(line + "\n" for line in lines))
+
+    def test_container_prefixes_and_timestamps_keep_the_payload_pattern(self) -> None:
+        first = (
+            "2026-08-08T12:00:00Z stdout F api | refreshed "
+            "request_id=abc"
+        )
+        repeat = (
+            "2026-08-08T12:00:01Z stdout F api | refreshed "
+            "request_id=def"
+        )
+
+        output, _ = self.run_stream([first, repeat])
+
+        self.assertIn(first + "\n", output)
+        self.assertNotIn(repeat, output)
+        self.assertIn("[1 similar before stop]", output)
+
+    def test_json_metadata_and_ids_are_volatile(self) -> None:
+        first = (
+            '{"time":1,"pid":14,"hostname":"one","level":"info",'
+            '"requestId":"abc","message":"cache refreshed"}'
+        )
+        repeat = (
+            '{"time":2,"pid":19,"hostname":"two","level":"info",'
+            '"requestId":"def","message":"cache refreshed"}'
+        )
+
+        output, _ = self.run_stream([first, repeat])
+
+        self.assertEqual(output, first + "\n. [1 similar before stop]\n")
+
+    def test_severity_and_event_changes_in_json_remain_visible(self) -> None:
+        info = (
+            '{"time":1,"level":"info","eventId":1000,'
+            '"message":"worker heartbeat"}'
+        )
+        warning = (
+            '{"time":2,"level":"warning","eventId":1001,'
+            '"message":"worker heartbeat"}'
+        )
+
+        output, _ = self.run_stream([info, warning])
+
+        self.assertEqual(output, info + "\n" + warning + "\n")
+
+    def test_http_status_changes_remain_visible(self) -> None:
+        ok = (
+            '127.0.0.1 [07/Aug/2026:09:30:00 -0500] '
+            '"GET /health HTTP/1.1" 200 17'
+        )
+        ok_repeat = (
+            '127.0.0.1 [07/Aug/2026:09:30:01 -0500] '
+            '"GET /health HTTP/1.1" 200 17'
+        )
+        failed = (
+            '127.0.0.1 [07/Aug/2026:09:30:02 -0500] '
+            '"GET /health HTTP/1.1" 500 17'
+        )
+
+        output, _ = self.run_stream([ok, ok_repeat, failed])
+
+        self.assertEqual(
+            output,
+            ok + "\n. [1 similar in 0s]\n" + failed + "\n",
+        )
+
+    def test_changed_error_payloads_stay_visible_and_identical_errors_repeat(self) -> None:
+        disk_full = (
+            '{"timestamp":"2026-08-08T12:00:00Z","level":"error",'
+            '"error":{"message":"disk full","code":"EIO"}}'
+        )
+        disk_full_repeat = (
+            '{"timestamp":"2026-08-08T12:00:01Z","level":"error",'
+            '"error":{"message":"disk full","code":"EIO"}}'
+        )
+        permission = (
+            '{"timestamp":"2026-08-08T12:00:02Z","level":"error",'
+            '"error":{"message":"permission denied","code":"EACCES"}}'
+        )
+
+        output, _ = self.run_stream(
+            [disk_full, disk_full_repeat, permission]
+        )
+
+        self.assertEqual(
+            output,
+            disk_full + "\n. [1 similar in 0s]\n" + permission + "\n",
+        )
+
+    def test_malformed_and_unknown_structured_records_fail_open(self) -> None:
+        lines = ["{malformed", "{malformed", "[1, 2]", "[1, 2]"]
+
+        output, _ = self.run_stream(lines)
+
+        self.assertEqual(output, "".join(line + "\n" for line in lines))
+
+    def test_deeply_nested_json_fails_open(self) -> None:
+        line = '{"value":' + "[" * 1_200 + "0" + "]" * 1_200 + "}"
+
+        output, _ = self.run_stream([line, line])
+
+        self.assertEqual(output, line + "\n" + line + "\n")
+
+    def test_multiline_diagnostics_remain_complete(self) -> None:
+        lines = [
+            "Traceback (most recent call last):",
+            '  File "worker.py", line 10, in run',
+            "    refresh()",
+            "ValueError: cache key missing",
+            "Traceback (most recent call last):",
+            '  File "worker.py", line 10, in run',
+            "    refresh()",
+            "ValueError: cache key missing",
+            "2026-08-08T12:01:00Z INFO worker recovered",
+        ]
+
+        output, _ = self.run_stream(lines)
+
+        self.assertEqual(output, "".join(line + "\n" for line in lines))
+
+    def test_suppressed_records_do_not_extend_the_pattern_index(self) -> None:
+        output, reducer = self.run_stream(
+            ["first", "second", "first", "third", "first"],
+            pattern_limit=2,
+        )
+
+        self.assertEqual(
+            output,
+            "first\nsecond\nfirst\nthird\nfirst\n",
+        )
+        self.assertEqual(len(reducer._patterns), 2)
+
+    def test_dots_are_buffered_into_short_runs(self) -> None:
+        output = StringIO()
+        reducer = _StreamReducer(output)
+        reducer.process("heartbeat")
+        for _ in range(7):
+            reducer.process("heartbeat")
+        self.assertEqual(output.getvalue(), "heartbeat\n")
+
+        reducer.process("heartbeat")
+
+        self.assertEqual(output.getvalue(), "heartbeat\n........")
+        reducer.finish()
+        self.assertEqual(
+            output.getvalue(),
+            "heartbeat\n........ [8 similar before stop]\n",
+        )
+
+    def test_dot_every_keeps_an_exact_closing_count(self) -> None:
+        output, _ = self.run_stream(
+            ["heartbeat"] * 9,
+            dot_every=3,
+        )
+
+        self.assertEqual(
+            output,
+            "heartbeat\n.. [8 similar before stop]\n",
+        )
+
+    def test_pattern_change_closes_the_run_with_elapsed_time(self) -> None:
+        clock = FakeClock()
+        output = StringIO()
+        reducer = _StreamReducer(output, clock=clock)
+        reducer.process("heartbeat")
+        clock.now = 1.0
+        reducer.process("heartbeat")
+        clock.now = 2.9
+        reducer.process("ERROR connection refused")
+        reducer.finish()
 
         self.assertEqual(
             output.getvalue(),
-            "starting worker 17\n"
-            ".....\n"
-            "connection reset by peer\n"
-            "..............................\n"
-            "finished batch 42\n",
+            "heartbeat\n. [1 similar in 1s]\nERROR connection refused\n",
         )
 
-    def test_meaningfully_different_lines_are_printed_in_full(self) -> None:
+    def test_logical_clock_closes_a_run_at_the_summary_interval(self) -> None:
+        clock = FakeClock()
         output = StringIO()
-
-        compress(["service started\n", "database disconnected\n"], output)
-
-        self.assertEqual(output.getvalue(), "service started\ndatabase disconnected\n")
-
-    def test_history_only_covers_recent_lines(self) -> None:
-        output = StringIO()
-
-        compress(
-            ["red apple\n", "blue sky\n", "green grass\n", "red apple\n"],
+        reducer = _StreamReducer(
             output,
-            history_size=2,
+            clock=clock,
+            summary_interval=30.0,
         )
+        reducer.process("heartbeat")
+        reducer.process("heartbeat")
+        clock.now = 30.0
+
+        reducer.tick()
+        reducer.finish()
 
         self.assertEqual(
             output.getvalue(),
-            "red apple\nblue sky\ngreen grass\nred apple\n",
+            "heartbeat\n. [1 similar in 30s]\n",
         )
 
-    def test_marker_can_be_changed(self) -> None:
-        output = StringIO()
-
-        compress(["same\n", "same\n", "same\n"], output, marker="~")
-
-        self.assertEqual(output.getvalue(), "same\n~~\n")
-
-    def test_dot_every_groups_suppressed_lines(self) -> None:
-        output = StringIO()
-
-        compress(["same\n"] * 8, output, dot_every=3)
-
-        self.assertEqual(output.getvalue(), "same\n..\n")
-
-    def test_partial_dot_group_does_not_add_blank_output(self) -> None:
-        output = StringIO()
-
-        compress(["same\n", "same\n", "changed\n"], output, dot_every=3)
-
-        self.assertEqual(output.getvalue(), "same\nchanged\n")
-
-    def test_spinner_rotates_in_one_terminal_cell(self) -> None:
-        output = StringIO()
-
-        compress(
-            ["same\n", "same\n", "same\n", "same\n", "same\n"],
+    def test_live_timer_closes_an_idle_run(self) -> None:
+        output = SignalingBuffer()
+        reducer = _StreamReducer(
             output,
-            mode="spinner",
+            summary_interval=0.02,
+            live_timer=True,
+        )
+        reducer.process("heartbeat")
+        reducer.process("heartbeat")
+
+        self.assertTrue(output.summary_written.wait(0.5))
+        reducer.finish()
+        self.assertIn(". [1 similar in", output.getvalue())
+
+    def test_summaries_never_use_terminal_rewrite_controls(self) -> None:
+        output, _ = self.run_stream(["heartbeat", "heartbeat"])
+
+        self.assertNotIn("\b", output)
+        self.assertNotIn("\r", output)
+
+    def test_process_after_finish_is_rejected(self) -> None:
+        reducer = _StreamReducer(StringIO())
+        reducer.finish()
+
+        with self.assertRaisesRegex(RuntimeError, "after finish"):
+            reducer.process("late")
+
+    def test_signature_only_normalizes_named_volatile_values(self) -> None:
+        self.assertEqual(
+            _signature("request_id=abc lag=1"),
+            _signature("request_id=def lag=1"),
+        )
+        self.assertNotEqual(
+            _signature("request_id=abc lag=1"),
+            _signature("request_id=def lag=900"),
         )
 
-        self.assertEqual(output.getvalue(), "same\n|\b/\b-\b\\\n")
+    def test_fast_timestamp_id_shape_preserves_every_stable_segment(self) -> None:
+        baseline = (
+            "2026-08-08T12:00:00Z INFO refreshed cache "
+            "request_id=abc result=ready"
+        )
+        repeat = (
+            "2026-08-08T12:00:01Z INFO refreshed cache "
+            "request_id=def result=ready"
+        )
+        changed = (
+            "2026-08-08T12:00:02Z INFO refreshed cache "
+            "request_id=ghi result=failed"
+        )
 
-    def test_common_timestamp_and_level_formats_can_be_ignored(self) -> None:
-        output = StringIO()
-        lines = [
-            "2026-08-06T12:34:56Z [INFO] worker ready\n",
-            "Aug  6 12:35:01 WARNING: worker ready\n",
-            "[12:35:02] ERROR worker ready\n",
-            "[06/Aug/2026:12:35:03 -0500] DEBUG worker ready\n",
-        ]
-
-        compress(lines, output, ignore_timestamps=True, ignore_levels=True)
-
-        self.assertEqual(output.getvalue(), lines[0] + "...\n")
-
-    def test_severity_change_is_shown_before_repeated_errors_are_suppressed(
-        self,
-    ) -> None:
-        output = StringIO()
-        lines = [
-            "INFO worker heartbeat request=41\n",
-            "ERROR worker heartbeat request=41\n",
-            "ERROR worker heartbeat request=41\n",
-        ]
-
-        compress(lines, output)
-
-        self.assertEqual(output.getvalue(), lines[0] + lines[1] + ".\n")
-
-    def test_json_severity_change_survives_message_field_selection(self) -> None:
-        output = StringIO()
-        lines = [
-            '{"level":30,"msg":"request complete"}\n',
-            '{"level":50,"msg":"request complete"}\n',
-            '{"level":50,"msg":"request complete"}\n',
-        ]
-
-        compress(lines, output, message_field="msg")
-
-        self.assertEqual(output.getvalue(), lines[0] + lines[1] + ".\n")
-
-    def test_json_metadata_key_does_not_hide_a_severity_change(self) -> None:
-        output = StringIO()
-        lines = [
-            '{"level":30,"error":null,"msg":"request complete"}\n',
-            '{"level":50,"error":null,"msg":"request complete"}\n',
-            '{"level":50,"error":null,"msg":"request complete"}\n',
-        ]
-
-        compress(lines, output, message_field="msg")
-
-        self.assertEqual(output.getvalue(), lines[0] + lines[1] + ".\n")
-
-    def test_json_error_payload_survives_message_field_selection(self) -> None:
-        output = StringIO()
-        lines = [
-            '{"level":30,"error":null,"msg":"request complete"}\n',
-            '{"level":30,"error":"connection refused","msg":"request complete"}\n',
-            '{"level":30,"error":"connection refused","msg":"request complete"}\n',
-        ]
-
-        compress(lines, output, message_field="msg")
-
-        self.assertEqual(output.getvalue(), lines[0] + lines[1] + ".\n")
-
-    def test_json_http_status_outranks_normal_level(self) -> None:
-        output = StringIO()
-        lines = [
-            '{"level":30,"status":200,"msg":"request complete"}\n',
-            '{"level":30,"status":200,"msg":"request complete"}\n',
-            '{"level":30,"status":404,"msg":"request complete"}\n',
-            '{"level":30,"status":404,"msg":"request complete"}\n',
-            '{"level":30,"status":500,"msg":"request complete"}\n',
-            '{"level":30,"status":500,"msg":"request complete"}\n',
-        ]
-
-        compress(lines, output, message_field="msg")
+        output, _ = self.run_stream([baseline, repeat, changed])
 
         self.assertEqual(
-            output.getvalue(),
-            lines[0] + ".\n" + lines[2] + ".\n" + lines[4] + ".\n",
-        )
-
-    def test_nested_pino_response_status_is_preserved(self) -> None:
-        output = StringIO()
-        lines = [
-            '{"level":30,"res":{"statusCode":200},"msg":"request complete"}\n',
-            '{"level":30,"res":{"statusCode":500},"msg":"request complete"}\n',
-            '{"level":30,"res":{"statusCode":500},"msg":"request complete"}\n',
-        ]
-
-        compress(lines, output, message_field="msg")
-
-        self.assertEqual(output.getvalue(), lines[0] + lines[1] + ".\n")
-
-    def test_http_error_status_is_shown_then_repeated_errors_are_suppressed(
-        self,
-    ) -> None:
-        output = StringIO()
-        lines = [
-            '127.0.0.1 - - "GET /health HTTP/1.1" 200 17\n',
-            '127.0.0.1 - - "GET /health HTTP/1.1" 500 17\n',
-            '127.0.0.1 - - "GET /health HTTP/1.1" 500 17\n',
-        ]
-
-        compress(lines, output, similarity=0.95)
-
-        self.assertEqual(output.getvalue(), lines[0] + lines[1] + ".\n")
-
-    def test_http_status_inside_a_json_message_is_preserved(self) -> None:
-        output = StringIO()
-        lines = [
-            '{"log":"GET /health HTTP/1.1\\\" 200 17"}\n',
-            '{"log":"GET /health HTTP/1.1\\\" 500 17"}\n',
-            '{"log":"GET /health HTTP/1.1\\\" 500 17"}\n',
-        ]
-
-        compress(lines, output, message_field="log", similarity=0.95)
-
-        self.assertEqual(output.getvalue(), lines[0] + lines[1] + ".\n")
-
-    def test_regex_filters_run_before_similarity_tracking(self) -> None:
-        output = StringIO()
-        lines = [
-            "info ready\n",
-            "error disk 100\n",
-            "debug error trace\n",
-            "error disk 101\n",
-        ]
-
-        compress(
-            lines,
             output,
-            include_regex="error",
-            exclude_regex="^debug",
+            baseline + "\n. [1 similar in 0s]\n" + changed + "\n",
         )
 
-        self.assertEqual(output.getvalue(), "error disk 100\n.\n")
-
-    def test_marker_and_spinner_colors_are_terminal_only(self) -> None:
-        dots = TerminalBuffer()
-        spinner = TerminalBuffer()
-        redirected = StringIO()
-
-        compress(["same\n", "same\n"], dots, dot_color="yellow")
-        compress(
-            ["same\n", "same\n"],
-            spinner,
-            mode="spinner",
-            spinner_color="green",
+    def test_multiple_named_ids_and_uuid_values_use_complete_normalization(self) -> None:
+        first = (
+            "2026-08-08T12:00:00Z INFO request_id=abc trace_id=def "
+            "job=21bb6a55-7354-4b15-9d8d-42ff1e84b89d"
         )
-        compress(["same\n", "same\n"], redirected, dot_color="yellow")
-
-        self.assertEqual(dots.getvalue(), "same\n\x1b[33m.\x1b[0m\n")
-        self.assertEqual(spinner.getvalue(), "same\n\x1b[32m|\x1b[0m\n")
-        self.assertEqual(redirected.getvalue(), "same\n.\n")
-
-    def test_counts_mode_updates_count_and_elapsed_time(self) -> None:
-        output = StringIO()
-        timestamps = iter((10.0, 18.9))
-
-        compress(
-            ["same\n", "same\n", "same\n"],
-            output,
-            mode="counts",
-            clock=lambda: next(timestamps),
+        repeat = (
+            "2026-08-08T12:00:01Z INFO request_id=ghi trace_id=jkl "
+            "job=564e5727-9465-44bb-8679-0c1465036a3b"
         )
+
+        output, _ = self.run_stream([first, repeat])
+
+        self.assertEqual(output, first + "\n. [1 similar before stop]\n")
+
+    def test_clock_shaped_state_values_remain_visible(self) -> None:
+        first = "replication lag is 00:00:01"
+        changed = "replication lag is 00:15:00"
+
+        output, _ = self.run_stream([first, changed])
+
+        self.assertEqual(output, first + "\n" + changed + "\n")
+
+    def test_leading_clock_before_a_level_is_normalized(self) -> None:
+        first = "12:00:00 INFO worker heartbeat"
+        repeat = "12:00:01 INFO worker heartbeat"
+
+        output, _ = self.run_stream([first, repeat])
+
+        self.assertEqual(output, first + "\n. [1 similar before stop]\n")
+
+    def test_invalid_leading_clocks_fail_open(self) -> None:
+        first = "99:99:98 INFO worker heartbeat"
+        changed = "99:99:99 INFO worker heartbeat"
+
+        output, _ = self.run_stream([first, changed])
+
+        self.assertEqual(output, first + "\n" + changed + "\n")
+
+    def test_oversized_signatures_fail_open(self) -> None:
+        stable = "x" * 1100
+        first = f"2026-08-08T12:00:00Z INFO {stable} request_id=abc"
+        changed = f"2026-08-08T12:00:01Z INFO {stable} request_id=def"
+
+        output, _ = self.run_stream([first, changed])
+
+        self.assertEqual(output, first + "\n" + changed + "\n")
+
+    def test_resumed_pattern_prints_a_new_exemplar_after_a_diagnostic(self) -> None:
+        ordinary = "2026-08-08T12:00:00Z INFO heartbeat request_id=abc"
+        repeat = "2026-08-08T12:00:01Z INFO heartbeat request_id=def"
+        error = "2026-08-08T12:00:02Z ERROR connection refused"
+        resumed = "2026-08-08T12:00:03Z INFO heartbeat request_id=ghi"
+
+        output, _ = self.run_stream([ordinary, repeat, error, resumed, resumed])
 
         self.assertEqual(
-            output.getvalue(),
-            "same\n[1 similar line, 0s]\r[2 similar lines, 8s]\n",
-        )
-
-    def test_json_fields_can_be_ignored_or_selected(self) -> None:
-        ignored_output = StringIO()
-        selected_output = StringIO()
-        lines = [
-            '{"timestamp":"12:00","request_id":"a","msg":"ready"}\n',
-            '{"request_id":"b","msg":"ready","timestamp":"12:01"}\n',
-        ]
-
-        compress(
-            lines,
-            ignored_output,
-            ignore_fields=("timestamp", "request_id"),
-        )
-        compress(lines, selected_output, message_field="msg")
-
-        self.assertEqual(ignored_output.getvalue(), lines[0] + ".\n")
-        self.assertEqual(selected_output.getvalue(), lines[0] + ".\n")
-
-    def test_nested_json_message_field_can_be_selected(self) -> None:
-        output = StringIO()
-        lines = [
-            '{"timeUnixNano":"1","body":{"stringValue":"ready"}}\n',
-            '{"timeUnixNano":"2","body":{"stringValue":"ready"}}\n',
-        ]
-
-        compress(lines, output, message_field="body.stringValue")
-
-        self.assertEqual(output.getvalue(), lines[0] + ".\n")
-
-    def test_exact_json_key_takes_priority_over_dotted_lookup(self) -> None:
-        output = StringIO()
-        lines = [
-            '{"body.stringValue":"ready","body":{"stringValue":"one"}}\n',
-            '{"body.stringValue":"ready","body":{"stringValue":"two"}}\n',
-        ]
-
-        compress(lines, output, message_field="body.stringValue")
-
-        self.assertEqual(output.getvalue(), lines[0] + ".\n")
-
-    def test_comparison_lines_remain_persistent_known_noise(self) -> None:
-        output = StringIO()
-
-        compress(
-            ["known noise 124\n", "meaningful event\n"],
             output,
-            comparison_lines=["known noise 123\n"],
+            ordinary
+            + "\n. [1 similar in 0s]\n"
+            + error
+            + "\n"
+            + resumed
+            + "\n. [1 similar before stop]\n",
         )
-
-        self.assertEqual(output.getvalue(), ".\nmeaningful event\n")
-
-    def test_comparison_lines_do_not_hide_a_severity_transition(self) -> None:
-        output = StringIO()
-
-        compress(
-            ["ERROR known noise 124\n", "ERROR known noise 124\n"],
-            output,
-            comparison_lines=["INFO known noise 123\n"],
-        )
-
-        self.assertEqual(output.getvalue(), "ERROR known noise 124\n.\n")
-
-    def test_rotate_sample_prints_every_nth_repeat_in_full(self) -> None:
-        output = StringIO()
-
-        compress(["heartbeat\n"] * 6, output, rotate_sample=3)
-
-        self.assertEqual(output.getvalue(), "heartbeat\n..\nheartbeat\n..\n")
-
-    def test_rotate_sample_can_use_a_seconds_interval(self) -> None:
-        output = StringIO()
-        timestamps = iter((0.0, 4.0, 10.0))
-
-        compress(
-            ["heartbeat\n"] * 4,
-            output,
-            rotate_sample="10s",
-            clock=lambda: next(timestamps),
-        )
-
-        self.assertEqual(output.getvalue(), "heartbeat\n..\nheartbeat\n")
-
-    def test_rotate_sample_timer_survives_silent_dot_groups(self) -> None:
-        output = StringIO()
-        timestamps = iter((0.0, 4.0, 10.0))
-
-        compress(
-            ["heartbeat\n"] * 4,
-            output,
-            dot_every=100,
-            rotate_sample="10s",
-            clock=lambda: next(timestamps),
-        )
-
-        self.assertEqual(output.getvalue(), "heartbeat\nheartbeat\n")
-
-
-class CorpusTests(unittest.TestCase):
-    """Verify logs commonly inspected during development against sanitized fixtures."""
-
-    def test_corpus_declares_intended_fixture_coverage(self) -> None:
-        corpus = json.loads(CORPUS_PATH.read_text(encoding="utf-8"))
-        cases = corpus["cases"]
-
-        self.assertIn("Sanitized", corpus["methodology"])
-        self.assertTrue(corpus["sources"])
-        self.assertEqual(
-            {platform for case in cases for platform in case["platforms"]},
-            {"linux", "windows", "macos"},
-        )
-        self.assertTrue(
-            {"application", "test", "web", "container", "os"}
-            <= {case["workload"] for case in cases}
-        )
-        self.assertGreaterEqual(len({case["format"] for case in cases}), 10)
-
-    def test_development_log_corpus_compresses_noise_and_preserves_exceptions(
-        self,
-    ) -> None:
-        corpus = json.loads(CORPUS_PATH.read_text(encoding="utf-8"))
-        cases = corpus["cases"]
-
-        for case in cases:
-            with self.subTest(case=case["name"]):
-                output = StringIO()
-                lines = case["lines"]
-
-                self.assertIn(case["source"], corpus["sources"])
-                self.assertEqual(len(lines), 3)
-                compress(
-                    (line + "\n" for line in lines),
-                    output,
-                    **case["options"],
-                )
-
-                self.assertEqual(
-                    output.getvalue(),
-                    lines[0] + "\n.\n" + lines[2] + "\n",
-                )
 
 
 class CommandTests(unittest.TestCase):
-    """Check that the command can process a file from end to end."""
+    """Verify the small 1.0 command surface and tail behavior."""
 
-    def test_file_input(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory, "input.log")
-            path.write_text("ready 1\nready 2\nfailed\n", encoding="utf-8")
+    @staticmethod
+    def stop_runner(process: subprocess.Popen[str]) -> None:
+        """Prevent a failed integration assertion from leaving child processes."""
+        if process.poll() is not None:
+            return
+        process.terminate()
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
 
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "qurtail",
-                    "--config",
-                    str(Path(directory, "missing.rc")),
-                    str(path),
-                ],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "ready 1\n.\nfailed\n")
-
-    def test_file_input_starts_with_the_last_ten_lines(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory, "input.log")
-            path.write_text("\n".join("abcdefghijkl") + "\n", encoding="utf-8")
-
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "qurtail",
-                    "--config",
-                    str(Path(directory, "missing.rc")),
-                    str(path),
-                ],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "c\nd\ne\nf\ng\nh\ni\nj\nk\nl\n")
-
-    def test_rc_enables_spinner_and_cli_can_override_it(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            home = Path(directory)
-            Path(home, ".qurtailrc").write_text(
-                "[qurtail]\n"
-                "mode = spinner\n"
-                "spinner = ab\n"
-                "spinner_color = green\n"
-                "dot_color = yellow\n"
-                "ignore_timestamps = yes\n"
-                "ignore_levels = true\n"
-                "ignore_prefixes = api:, worker:\n",
-                encoding="utf-8",
-            )
-            path = Path(home, "input.log")
+    def test_file_input_uses_the_last_ten_lines_by_default(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "app.log"
             path.write_text(
-                "2026-08-06T12:34:56Z INFO api: task done\n"
-                "Aug  6 12:35:01 ERROR worker: task done\n"
-                "[12:35:02] WARN api: changed\n",
+                "".join(f"line {number}\n" for number in range(15)),
                 encoding="utf-8",
             )
-            environment = os.environ.copy()
-            environment["HOME"] = str(home)
-            environment["USERPROFILE"] = str(home)
+            output = StringIO()
 
-            configured = subprocess.run(
-                [sys.executable, "-m", "qurtail", str(path)],
-                env=environment,
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            overridden = subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "qurtail",
-                    "--mode",
-                    "dots",
-                    "--marker",
-                    "~",
-                    str(path),
-                ],
-                env=environment,
-                check=False,
-                capture_output=True,
-                text=True,
-            )
+            with patch.object(sys, "stdout", output):
+                status = main([str(path)])
 
-        self.assertEqual(configured.returncode, 0, configured.stderr)
+        self.assertEqual(status, 0)
+        self.assertNotIn("line 4\n", output.getvalue())
+        self.assertTrue(output.getvalue().startswith("line 5\n"))
+        self.assertTrue(output.getvalue().endswith("line 14\n"))
+
+    def test_lines_option_controls_existing_file_context(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "app.log"
+            path.write_text("one\ntwo\nthree\n", encoding="utf-8")
+            output = StringIO()
+
+            with patch.object(sys, "stdout", output):
+                status = main(["-n", "2", str(path)])
+
+        self.assertEqual(status, 0)
+        self.assertEqual(output.getvalue(), "two\nthree\n")
+
+    def test_stdin_is_read_until_the_stream_closes(self) -> None:
+        output = StringIO()
+        with (
+            patch.object(sys, "stdin", StringIO("one\none\ntwo\n")),
+            patch.object(sys, "stdout", output),
+        ):
+            status = main([])
+
+        self.assertEqual(status, 0)
         self.assertEqual(
-            configured.stdout,
-            "2026-08-06T12:34:56Z INFO api: task done\na\n"
-            "[12:35:02] WARN api: changed\n",
-        )
-        self.assertEqual(overridden.returncode, 0, overridden.stderr)
-        self.assertEqual(
-            overridden.stdout,
-            "2026-08-06T12:34:56Z INFO api: task done\n~\n"
-            "[12:35:02] WARN api: changed\n",
+            output.getvalue(),
+            "one\n. [1 similar in 0s]\ntwo\n",
         )
 
-    def test_custom_and_extra_configs_cascade_before_cli_options(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            base = Path(root, "base.toml")
-            first_override = Path(root, "workload.toml")
-            second_override = Path(root, "local.toml")
-            path = Path(root, "input.log")
-            base.write_text(
-                "[qurtail]\nmode = spinner\nspinner = ab\n",
-                encoding="utf-8",
-            )
-            first_override.write_text(
-                "[qurtail]\nmode = dots\ndot_every = 2\nmarker = ~\n",
-                encoding="utf-8",
-            )
-            second_override.write_text(
-                "[qurtail]\nmarker = !\n",
-                encoding="utf-8",
-            )
-            path.write_text("same\nsame\nsame\nsame\n", encoding="utf-8")
-            command = [
-                sys.executable,
-                "-m",
-                "qurtail",
-                "-c",
-                str(base),
-                "-x",
-                str(first_override),
-                "-x",
-                str(second_override),
-            ]
-
-            configured = subprocess.run(
-                [*command, str(path)],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            cli_override = subprocess.run(
-                [*command, "--marker", "#", str(path)],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-
-        self.assertEqual(configured.returncode, 0, configured.stderr)
-        self.assertEqual(configured.stdout, "same\n!\n")
-        self.assertEqual(cli_override.returncode, 0, cli_override.stderr)
-        self.assertEqual(cli_override.stdout, "same\n#\n")
-
-    def test_short_custom_config_option_loads_base_defaults(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            base = Path(root, "base.toml")
-            path = Path(root, "input.log")
-            base.write_text("[qurtail]\nsimilarity = 1.0\n", encoding="utf-8")
-            path.write_text("worker 1234\nworker 1235\n", encoding="utf-8")
-
-            result = subprocess.run(
-                [sys.executable, "-m", "qurtail", "-c", str(base), str(path)],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "worker 1234\nworker 1235\n")
-
-    def test_clustered_follow_and_config_flags_load_defaults_before_help(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            config = Path(root, "config.toml")
-            config.write_text("[qurtail]\nsimilarity = 0.97\n", encoding="utf-8")
-            environment = os.environ.copy()
-            environment["HOME"] = str(root)
-            environment["USERPROFILE"] = str(root)
-
-            for clustered in ("-fc", "-fx"):
-                with self.subTest(clustered=clustered):
-                    result = subprocess.run(
-                        [
-                            sys.executable,
-                            "-m",
-                            "qurtail",
-                            clustered,
-                            str(config),
-                            "--help",
-                        ],
-                        env=environment,
-                        check=False,
-                        capture_output=True,
-                        text=True,
-                    )
-
-                    self.assertEqual(result.returncode, 0, result.stderr)
-                    self.assertIn("default: 0.97", result.stdout)
-
-    def test_config_accepts_toml_quoted_strings(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            config = Path(root, "config.toml")
-            path = Path(root, "input.log")
-            config.write_text(
-                "[qurtail]\n"
-                'mode = "dots"\n'
-                'marker = "~"\n'
-                "ignore_timestamps = true\n"
-                "ignore_levels = true\n"
-                'ignore_prefixes = "api:, worker:"\n',
-                encoding="utf-8",
-            )
-            path.write_text(
-                "2026-08-07T10:00:00Z INFO api: task done\n"
-                "2026-08-07T10:00:01Z ERROR worker: task done\n"
-                "2026-08-07T10:00:02Z WARN api: changed\n",
-                encoding="utf-8",
-            )
-
-            result = subprocess.run(
-                [sys.executable, "-m", "qurtail", "-c", str(config), str(path)],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(
-            result.stdout,
-            "2026-08-07T10:00:00Z INFO api: task done\n~\n"
-            "2026-08-07T10:00:02Z WARN api: changed\n",
+    def test_runner_compacts_combined_output_captures_raw_bytes_and_returns_status(
+        self,
+    ) -> None:
+        script = (
+            "import os, sys; "
+            "os.write(1, b'heartbeat\\n'); "
+            "os.write(2, b'heartbeat\\n'); "
+            "sys.exit(7)"
         )
+        with tempfile.TemporaryDirectory() as temporary:
+            raw_log = Path(temporary) / "child.raw.log"
+            output = StringIO()
 
-    def test_extra_config_paths_are_relative_to_their_own_file(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            override_directory = Path(root, "overrides")
-            override_directory.mkdir()
-            override = Path(override_directory, "known-noise.toml")
-            override.write_text(
-                "[qurtail]\ncomparison_file = known.log\n",
-                encoding="utf-8",
-            )
-            Path(override_directory, "known.log").write_text(
-                "known noise 123\n", encoding="utf-8"
-            )
-            path = Path(root, "input.log")
-            path.write_text("known noise 124\nmeaningful event\n", encoding="utf-8")
-
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "qurtail",
-                    "-c",
-                    str(Path(root, "missing.rc")),
-                    "-x",
-                    str(override),
-                    str(path),
-                ],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, ".\nmeaningful event\n")
-
-    def test_invalid_extra_config_reports_its_path(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            override = Path(root, "invalid.toml")
-            override.write_text("[qurtail]\nunknown = value\n", encoding="utf-8")
-
-            result = subprocess.run(
-                [sys.executable, "-m", "qurtail", "-x", str(override)],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-
-        self.assertEqual(result.returncode, 1)
-        self.assertIn(str(override), result.stderr)
-        self.assertIn("unknown rc option", result.stderr)
-        self.assertNotIn("Traceback", result.stderr)
-
-    def test_missing_extra_config_reports_a_clean_error(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            missing = Path(directory, "missing.toml")
-            result = subprocess.run(
-                [sys.executable, "-m", "qurtail", "-x", str(missing)],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-
-        self.assertEqual(result.returncode, 1)
-        self.assertIn(str(missing), result.stderr)
-        self.assertIn("extra config file does not exist", result.stderr)
-        self.assertNotIn("Traceback", result.stderr)
-
-    def test_rc_can_set_similarity_threshold(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            home = Path(directory)
-            Path(home, ".qurtailrc").write_text(
-                "[qurtail]\nsimilarity = 1.0\n",
-                encoding="utf-8",
-            )
-            path = Path(home, "input.log")
-            path.write_text("worker 1234\nworker 1235\n", encoding="utf-8")
-            environment = os.environ.copy()
-            environment["HOME"] = str(home)
-            environment["USERPROFILE"] = str(home)
-
-            result = subprocess.run(
-                [sys.executable, "-m", "qurtail", str(path)],
-                env=environment,
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "worker 1234\nworker 1235\n")
-
-    def test_rc_can_configure_json_comparison(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            home = Path(directory)
-            Path(home, ".qurtailrc").write_text(
-                "[qurtail]\nignore_fields = timestamp, request_id\n",
-                encoding="utf-8",
-            )
-            path = Path(home, "input.log")
-            first = '{"timestamp":"12:00","request_id":"a","msg":"ready"}\n'
-            path.write_text(
-                first + '{"request_id":"b","msg":"ready","timestamp":"12:01"}\n',
-                encoding="utf-8",
-            )
-            environment = os.environ.copy()
-            environment["HOME"] = str(home)
-            environment["USERPROFILE"] = str(home)
-
-            result = subprocess.run(
-                [sys.executable, "-m", "qurtail", str(path)],
-                env=environment,
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, first + ".\n")
-
-    def test_rc_can_enable_counts_mode(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            home = Path(directory)
-            Path(home, ".qurtailrc").write_text(
-                "[qurtail]\nmode = counts\n",
-                encoding="utf-8",
-            )
-            path = Path(home, "input.log")
-            path.write_text("same\nsame\n", encoding="utf-8")
-            environment = os.environ.copy()
-            environment["HOME"] = str(home)
-            environment["USERPROFILE"] = str(home)
-
-            result = subprocess.run(
-                [sys.executable, "-m", "qurtail", str(path)],
-                env=environment,
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "same\n[1 similar line, 0s]\n")
-
-    def test_rc_can_reduce_dot_frequency(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            home = Path(directory)
-            Path(home, ".qurtailrc").write_text(
-                "[qurtail]\nmode = dots\ndot_every = 2\n",
-                encoding="utf-8",
-            )
-            path = Path(home, "input.log")
-            path.write_text("same\nsame\nsame\nsame\n", encoding="utf-8")
-            environment = os.environ.copy()
-            environment["HOME"] = str(home)
-            environment["USERPROFILE"] = str(home)
-
-            result = subprocess.run(
-                [sys.executable, "-m", "qurtail", str(path)],
-                env=environment,
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "same\n.\n")
-
-    def test_rc_can_rotate_every_nth_suppressed_line(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            home = Path(directory)
-            Path(home, ".qurtailrc").write_text(
-                "[qurtail]\nrotate_sample = 2\n",
-                encoding="utf-8",
-            )
-            path = Path(home, "input.log")
-            path.write_text("same\nsame\nsame\nsame\n", encoding="utf-8")
-            environment = os.environ.copy()
-            environment["HOME"] = str(home)
-            environment["USERPROFILE"] = str(home)
-
-            result = subprocess.run(
-                [sys.executable, "-m", "qurtail", str(path)],
-                env=environment,
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "same\n.\nsame\n.\n")
-
-    def test_rc_comparison_file_is_relative_to_the_rc_file(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            home = Path(directory)
-            Path(home, ".qurtailrc").write_text(
-                "[qurtail]\ncomparison_file = known.log\n",
-                encoding="utf-8",
-            )
-            Path(home, "known.log").write_text("known noise 123\n", encoding="utf-8")
-            path = Path(home, "input.log")
-            path.write_text("known noise 124\nmeaningful event\n", encoding="utf-8")
-            environment = os.environ.copy()
-            environment["HOME"] = str(home)
-            environment["USERPROFILE"] = str(home)
-
-            result = subprocess.run(
-                [sys.executable, "-m", "qurtail", str(path)],
-                env=environment,
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, ".\nmeaningful event\n")
-
-    def test_missing_comparison_file_reports_a_clean_error(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            missing = Path(directory, "missing.log")
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "qurtail",
-                    "--config",
-                    str(Path(directory, "missing.rc")),
-                    "--comparison-file",
-                    str(missing),
-                ],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-
-        self.assertEqual(result.returncode, 1)
-        self.assertIn(str(missing), result.stderr)
-        self.assertNotIn("Traceback", result.stderr)
-
-    def test_rc_and_cli_regex_filters(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            home = Path(directory)
-            Path(home, ".qurtailrc").write_text(
-                "[qurtail]\ninclude_regex = error\nexclude_regex = debug\n",
-                encoding="utf-8",
-            )
-            path = Path(home, "input.log")
-            path.write_text(
-                "info ready\n"
-                "error disk 100\n"
-                "debug error trace\n"
-                "error disk 101\n",
-                encoding="utf-8",
-            )
-            environment = os.environ.copy()
-            environment["HOME"] = str(home)
-            environment["USERPROFILE"] = str(home)
-
-            configured = subprocess.run(
-                [sys.executable, "-m", "qurtail", str(path)],
-                env=environment,
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            overridden = subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "qurtail",
-                    "--include-regex",
-                    "info",
-                    "--exclude-regex",
-                    "nomatch",
-                    str(path),
-                ],
-                env=environment,
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-
-        self.assertEqual(configured.returncode, 0, configured.stderr)
-        self.assertEqual(configured.stdout, "error disk 100\n.\n")
-        self.assertEqual(overridden.returncode, 0, overridden.stderr)
-        self.assertEqual(overridden.stdout, "info ready\n")
-
-    def test_cli_accepts_documented_ignore_prefixes_option(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory, "input.log")
-            path.write_text(
-                "api: task done\nworker: task done\nchanged\n",
-                encoding="utf-8",
-            )
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    "qurtail",
-                    "--config",
-                    str(Path(directory, "missing.rc")),
-                    "--ignore-prefixes",
-                    "api:, worker:",
-                    str(path),
-                ],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout, "api: task done\n.\nchanged\n")
-
-    def test_invalid_regex_reports_a_cli_error(self) -> None:
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "qurtail",
-                "--config",
-                "missing.rc",
-                "--include-regex",
-                "[",
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("invalid filter regex", result.stderr)
-        self.assertNotIn("Traceback", result.stderr)
-
-    def test_invalid_rotate_sample_reports_a_cli_error(self) -> None:
-        for value in ("0", "nans"):
-            with self.subTest(value=value):
-                result = subprocess.run(
+            with patch.object(sys, "stdout", output):
+                status = main(
                     [
+                        "run",
+                        "--raw-log",
+                        str(raw_log),
+                        "--",
                         sys.executable,
-                        "-m",
-                        "qurtail",
-                        "--config",
-                        "missing.rc",
-                        "--rotate-sample",
-                        value,
-                    ],
-                    check=False,
-                    capture_output=True,
-                    text=True,
+                        "-c",
+                        script,
+                    ]
                 )
 
-                self.assertEqual(result.returncode, 2)
-                self.assertIn("rotate_sample must be a positive", result.stderr)
-                self.assertNotIn("Traceback", result.stderr)
+            raw_bytes = raw_log.read_bytes()
 
-    def test_invalid_dot_every_reports_a_cli_error(self) -> None:
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "qurtail",
-                "--config",
-                "missing.rc",
-                "--dot-every",
-                "0",
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
-        )
+        self.assertEqual(status, 7)
+        self.assertEqual(output.getvalue(), "heartbeat\n. [1 similar before stop]\n")
+        self.assertEqual(raw_bytes, b"heartbeat\nheartbeat\n")
 
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("--dot-every must be at least 1", result.stderr)
-        self.assertNotIn("Traceback", result.stderr)
+    def test_runner_passes_arguments_without_shell_interpretation(self) -> None:
+        script = "import json, sys; print(json.dumps(sys.argv[1:]))"
+        output = StringIO()
 
-    @unittest.skipUnless(
-        sys.platform != "win32" and shutil.which("bash"),
-        "requires Bash on a POSIX system",
-    )
-    def test_cli_runs_cleanly_from_bash(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            project = Path(__file__).resolve().parents[1]
-            environment = Path(directory, "venv")
-            setup = subprocess.run(
+        with patch.object(sys, "stdout", output):
+            status = main(
                 [
+                    "run",
+                    "--",
                     sys.executable,
-                    "-m",
-                    "venv",
-                    "--system-site-packages",
-                    str(environment),
-                ],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            self.assertEqual(setup.returncode, 0, setup.stderr)
-
-            install = subprocess.run(
-                [
-                    str(environment / "bin" / "python"),
-                    "-m",
-                    "pip",
-                    "install",
-                    "--no-build-isolation",
-                    "--no-deps",
-                    "-e",
-                    str(project),
-                ],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            self.assertEqual(install.returncode, 0, install.stderr)
-
-            shell_environment = os.environ.copy()
-            shell_environment["PATH"] = os.pathsep.join(
-                [str(environment / "bin"), shell_environment["PATH"]]
-            )
-            shell_environment["HOME"] = directory
-            shell_environment["USERPROFILE"] = directory
-            pipeline_result = subprocess.run(
-                [
-                    shutil.which("bash"),
                     "-c",
-                    'printf "ready 1\\nready 2\\nfailed\\n" | qurtail',
-                ],
-                env=shell_environment,
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            self.assertEqual(pipeline_result.returncode, 0, pipeline_result.stderr)
-            self.assertEqual(pipeline_result.stdout, "ready 1\n.\nfailed\n")
-
-            path = Path(directory, "my.log")
-            path.write_text("\n".join("abcdefghijkl") + "\n", encoding="utf-8")
-            help_result = subprocess.run(
-                [shutil.which("bash"), "-c", "qurtail -h"],
-                env=shell_environment,
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            self.assertEqual(help_result.returncode, 0, help_result.stderr)
-            self.assertIn("usage: qurtail", help_result.stdout)
-            self.assertIn("--follow", help_result.stdout)
-            self.assertIn("-c PATH", help_result.stdout)
-            self.assertIn("--config", help_result.stdout)
-            self.assertIn("-x PATH", help_result.stdout)
-            self.assertIn("--extra-config", help_result.stdout)
-            self.assertIn("--mode", help_result.stdout)
-            self.assertIn("--ignore-timestamps", help_result.stdout)
-            self.assertIn("--ignore-prefix", help_result.stdout)
-            self.assertIn("--ignore-prefixes", help_result.stdout)
-            self.assertIn("--include-regex", help_result.stdout)
-            self.assertIn("--exclude-regex", help_result.stdout)
-            self.assertIn("--spinner-color", help_result.stdout)
-            self.assertIn("--dot-color", help_result.stdout)
-            self.assertIn("--dot-every", help_result.stdout)
-            self.assertIn("--ignore-field", help_result.stdout)
-            self.assertIn("--message-field", help_result.stdout)
-            self.assertIn("--comparison-file", help_result.stdout)
-            self.assertIn("--rotate-sample", help_result.stdout)
-
-            process = subprocess.Popen(
-                [
-                    shutil.which("bash"),
-                    "-c",
-                    'exec qurtail -f "$1"',
-                    "qurtail-test",
-                    str(path),
-                ],
-                env=shell_environment,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
+                    script,
+                    "left;right",
+                    "$(echo nope)",
+                ]
             )
 
-            time.sleep(0.6)
-            rotated = Path(directory, "my.log.1")
-            path.replace(rotated)
-            time.sleep(0.4)
-            path.write_text(
-                "rotation alpha\nreplacement complete\n",
-                encoding="utf-8",
-            )
-            time.sleep(0.6)
-            path.write_text("after truncate\n", encoding="utf-8")
-            time.sleep(0.6)
+        self.assertEqual(status, 0)
+        self.assertEqual(output.getvalue(), '["left;right", "$(echo nope)"]\n')
 
-            process.terminate()
-            stdout, stderr = process.communicate(timeout=5)
+    def test_runner_requires_a_child_command(self) -> None:
+        errors = StringIO()
 
-        self.assertEqual(stderr, "")
+        with self.assertRaises(SystemExit) as raised:
+            with redirect_stderr(errors):
+                main(["run", "--"])
+
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn("a command is required after --", errors.getvalue())
+
+    def test_interrupt_forwarding_reaps_the_child_and_maps_signal_status(self) -> None:
+        class FakeProcess:
+            pid = 123
+            returncode = None
+
+            def __init__(self) -> None:
+                self.wait_calls: list[float | None] = []
+
+            def poll(self) -> None:
+                return None
+
+            def wait(self, timeout: float | None = None) -> int:
+                self.wait_calls.append(timeout)
+                self.returncode = -qurtail.signal.SIGINT
+                return self.returncode
+
+            def send_signal(self, _: int) -> None:
+                raise AssertionError("POSIX forwarding should target the process group")
+
+            def terminate(self) -> None:
+                raise AssertionError("a cooperative child should not be terminated")
+
+            def kill(self) -> None:
+                raise AssertionError("a cooperative child should not be killed")
+
+        process = FakeProcess()
+        with (
+            patch.object(qurtail.os, "name", "posix"),
+            patch("qurtail.os.killpg", create=True) as kill_group,
+            patch("qurtail._wait_for_process_group", return_value=True),
+        ):
+            return_code = qurtail._interrupt_child(process)
+
+        self.assertEqual(return_code, -qurtail.signal.SIGINT)
         self.assertEqual(
-            stdout,
-            "c\nd\ne\nf\ng\nh\ni\nj\nk\nl\n"
-            "rotation alpha\nreplacement complete\nafter truncate\n",
+            qurtail._child_exit_status(
+                return_code,
+                requested_signal=qurtail.signal.SIGINT,
+            ),
+            130,
         )
+        kill_group.assert_called_once_with(process.pid, qurtail.signal.SIGINT)
+        self.assertEqual(process.wait_calls, [None])
 
-    def test_follow_flag_reads_the_file_and_waits_for_more(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory, "my.log")
-            path.write_text("ready 1\nready 2\nfailed\n", encoding="utf-8")
-            process = subprocess.Popen(
+    def test_windows_interrupt_uses_control_break_and_reaps_the_child(self) -> None:
+        class FakeProcess:
+            returncode = None
+
+            def __init__(self) -> None:
+                self.signals: list[int] = []
+                self.wait_calls: list[float | None] = []
+
+            def poll(self) -> None:
+                return None
+
+            def send_signal(self, event: int) -> None:
+                self.signals.append(event)
+
+            def wait(self, timeout: float | None = None) -> int:
+                self.wait_calls.append(timeout)
+                self.returncode = 0
+                return 0
+
+            def terminate(self) -> None:
+                raise AssertionError("a cooperative child should not be terminated")
+
+            def kill(self) -> None:
+                raise AssertionError("a cooperative child should not be killed")
+
+        process = FakeProcess()
+        control_break = 1
+        with (
+            patch.object(qurtail.os, "name", "nt"),
+            patch.object(
+                qurtail.signal,
+                "CTRL_BREAK_EVENT",
+                control_break,
+                create=True,
+            ),
+        ):
+            return_code = qurtail._interrupt_child(process)
+
+        self.assertEqual(return_code, 0)
+        self.assertEqual(
+            qurtail._child_exit_status(
+                return_code,
+                requested_signal=qurtail.signal.SIGINT,
+            ),
+            130,
+        )
+        self.assertEqual(process.signals, [control_break])
+        self.assertEqual(process.wait_calls, [qurtail.INTERRUPT_GRACE_SECONDS])
+
+    def test_runner_drains_cleanup_output_after_forwarding_an_interrupt(self) -> None:
+        class InterruptingStream:
+            def __init__(self) -> None:
+                self.iterations = 0
+                self.closed = False
+
+            def __iter__(self):
+                self.iterations += 1
+                if self.iterations == 1:
+                    raise KeyboardInterrupt
+                return iter([b"cleanup complete\n"])
+
+            def close(self) -> None:
+                self.closed = True
+
+        class FakeProcess:
+            pid = 123
+            returncode = None
+
+            def __init__(self) -> None:
+                self.stdout = InterruptingStream()
+
+            def poll(self) -> None:
+                return None
+
+            def wait(self, timeout: float | None = None) -> int:
+                self.returncode = -qurtail.signal.SIGINT
+                return self.returncode
+
+            def terminate(self) -> None:
+                raise AssertionError("a cooperative child should not be terminated")
+
+            def kill(self) -> None:
+                raise AssertionError("a cooperative child should not be killed")
+
+        process = FakeProcess()
+        output = StringIO()
+        reducer = _StreamReducer(output)
+        with tempfile.TemporaryDirectory() as temporary:
+            raw_log = Path(temporary) / "child.raw.log"
+            with (
+                patch.object(qurtail.os, "name", "posix"),
+                patch("qurtail.os.killpg", create=True),
+                patch("qurtail._wait_for_process_group", return_value=True),
+                patch("qurtail.subprocess.Popen", return_value=process),
+            ):
+                status = qurtail._run_child_command(
+                    ["child"],
+                    reducer,
+                    raw_log=raw_log,
+                )
+            reducer.finish()
+            raw_bytes = raw_log.read_bytes()
+
+        self.assertEqual(status, 130)
+        self.assertEqual(output.getvalue(), "cleanup complete\n")
+        self.assertEqual(raw_bytes, b"cleanup complete\n")
+        self.assertTrue(process.stdout.closed)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX process-group behavior")
+    def test_runner_drains_cleanup_larger_than_the_child_pipe(self) -> None:
+        payload_size = 512 * 1024
+        child = """
+import os
+from pathlib import Path
+import signal
+import sys
+import time
+
+payload = b"x" * int(sys.argv[2]) + b"\\n"
+
+def stop(_signum, _frame):
+    remaining = payload
+    while remaining:
+        remaining = remaining[os.write(1, remaining):]
+    raise SystemExit(0)
+
+signal.signal(signal.SIGINT, stop)
+Path(sys.argv[1]).write_text("ready", encoding="utf-8")
+while True:
+    time.sleep(1)
+"""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            ready = root / "ready"
+            raw_log = root / "child.raw.log"
+            runner = subprocess.Popen(
                 [
                     sys.executable,
-                    "-m",
-                    "qurtail",
-                    "--config",
-                    str(Path(directory, "missing.rc")),
-                    "-f",
-                    str(path),
+                    str(Path(qurtail.__file__).resolve()),
+                    "run",
+                    "--raw-log",
+                    str(raw_log),
+                    "--",
+                    sys.executable,
+                    "-c",
+                    child,
+                    str(ready),
+                    str(payload_size),
                 ],
-                stdout=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE,
                 text=True,
             )
+            self.addCleanup(self.stop_runner, runner)
+            deadline = time.monotonic() + 5
+            while not ready.exists() and runner.poll() is None:
+                if time.monotonic() >= deadline:
+                    self.fail("child did not become ready")
+                time.sleep(0.01)
+            os.kill(runner.pid, signal.SIGINT)
+            _, errors = runner.communicate(timeout=10)
 
-            with self.assertRaises(subprocess.TimeoutExpired):
-                process.communicate(timeout=0.5)
+            self.assertEqual(runner.returncode, 130, errors)
+            self.assertEqual(raw_log.stat().st_size, payload_size + 1)
 
-            process.terminate()
-            stdout, stderr = process.communicate(timeout=5)
+    @unittest.skipUnless(os.name == "posix", "POSIX signal forwarding")
+    def test_sigterm_stops_the_runner_and_its_child(self) -> None:
+        child = """
+from pathlib import Path
+import os
+import sys
+import time
 
-        self.assertEqual(stderr, "")
-        self.assertEqual(stdout, "ready 1\n.\nfailed\n")
+Path(sys.argv[1]).write_text(str(os.getpid()), encoding="utf-8")
+while True:
+    time.sleep(1)
+"""
+        with tempfile.TemporaryDirectory() as temporary:
+            pid_path = Path(temporary) / "child.pid"
+            runner = subprocess.Popen(
+                [
+                    sys.executable,
+                    str(Path(qurtail.__file__).resolve()),
+                    "run",
+                    "--",
+                    sys.executable,
+                    "-c",
+                    child,
+                    str(pid_path),
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            self.addCleanup(self.stop_runner, runner)
+            deadline = time.monotonic() + 5
+            while not pid_path.exists() and runner.poll() is None:
+                if time.monotonic() >= deadline:
+                    self.fail("child did not record its process id")
+                time.sleep(0.01)
+            child_pid = int(pid_path.read_text(encoding="utf-8"))
+            os.kill(runner.pid, signal.SIGTERM)
+            _, errors = runner.communicate(timeout=10)
+
+            self.assertEqual(runner.returncode, 143, errors)
+            with self.assertRaises(ProcessLookupError):
+                os.kill(child_pid, 0)
+
+    def test_follow_aliases_share_rotation_safe_file_following(self) -> None:
+        for flag in ("-f", "-F"):
+            with self.subTest(flag=flag):
+                output = StringIO()
+                with (
+                    patch.object(sys, "stdout", output),
+                    patch(
+                        "qurtail._follow_file",
+                        side_effect=KeyboardInterrupt,
+                    ) as follow,
+                ):
+                    status = main([flag, "-n", "50", "app.log"])
+
+                self.assertEqual(status, 0)
+                follow.assert_called_once()
+                self.assertEqual(follow.call_args.args[0], Path("app.log"))
+                self.assertEqual(follow.call_args.args[1], 50)
+
+    def test_file_follower_handles_append_truncation_and_replacement(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "app.log"
+            replacement = Path(temporary) / "replacement.log"
+            rotated = Path(temporary) / "app.log.1"
+            path.write_text("one\n", encoding="utf-8")
+            output = StringIO()
+            reducer = _StreamReducer(output)
+            sleep_calls = 0
+
+            def advance_file(_: float) -> None:
+                nonlocal sleep_calls
+                sleep_calls += 1
+                if sleep_calls == 1:
+                    with path.open("a", encoding="utf-8") as destination:
+                        destination.write("two\n")
+                elif sleep_calls == 2:
+                    path.write_text("three\n", encoding="utf-8")
+                elif sleep_calls == 3:
+                    replacement.write_text("four\n", encoding="utf-8")
+                    path.replace(rotated)
+                    replacement.replace(path)
+                else:
+                    raise KeyboardInterrupt
+
+            with patch("qurtail.time.sleep", side_effect=advance_file):
+                with self.assertRaises(KeyboardInterrupt):
+                    qurtail._follow_file(path, 10, reducer)
+            reducer.finish()
+
+        self.assertEqual(output.getvalue(), "one\ntwo\nthree\nfour\n")
+
+    def test_file_follower_rewinds_after_a_larger_copy_truncate(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "app.log"
+            path.write_text("old!\n", encoding="utf-8")
+            output = StringIO()
+            reducer = _StreamReducer(output)
+            sleep_calls = 0
+
+            def rewrite_file(_: float) -> None:
+                nonlocal sleep_calls
+                sleep_calls += 1
+                if sleep_calls == 1:
+                    path.write_text("newer!\n", encoding="utf-8")
+                else:
+                    raise KeyboardInterrupt
+
+            with patch("qurtail.time.sleep", side_effect=rewrite_file):
+                with self.assertRaises(KeyboardInterrupt):
+                    qurtail._follow_file(path, 10, reducer)
+            reducer.finish()
+
+        self.assertEqual(output.getvalue(), "old!\nnewer!\n")
+
+    def test_file_follower_detects_rewrite_with_unchanged_final_line(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "app.log"
+            path.write_text("old\nsame\n", encoding="utf-8")
+            output = StringIO()
+            reducer = _StreamReducer(output)
+            sleep_calls = 0
+
+            def rewrite_file(_: float) -> None:
+                nonlocal sleep_calls
+                sleep_calls += 1
+                if sleep_calls == 1:
+                    path.write_text("new\nsame\n", encoding="utf-8")
+                else:
+                    raise KeyboardInterrupt
+
+            with patch("qurtail.time.sleep", side_effect=rewrite_file):
+                with self.assertRaises(KeyboardInterrupt):
+                    qurtail._follow_file(path, 10, reducer)
+            reducer.finish()
+
+        self.assertEqual(output.getvalue(), "old\nsame\nnew\nsame\n")
+
+    def test_file_follower_detects_changed_partial_final_record(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "app.log"
+            path.write_text("same\nold-part", encoding="utf-8")
+            output = StringIO()
+            reducer = _StreamReducer(output)
+            sleep_calls = 0
+
+            def rewrite_file(_: float) -> None:
+                nonlocal sleep_calls
+                sleep_calls += 1
+                if sleep_calls == 1:
+                    path.write_text("same\nnew-part-long", encoding="utf-8")
+                else:
+                    raise KeyboardInterrupt
+
+            with patch("qurtail.time.sleep", side_effect=rewrite_file):
+                with self.assertRaises(KeyboardInterrupt):
+                    qurtail._follow_file(path, 10, reducer)
+            reducer.finish()
+
+        self.assertEqual(
+            output.getvalue(),
+            "same\nold-part\nsame\nnew-part-long\n",
+        )
+
+    def test_file_follower_with_zero_context_detects_equal_rewrite(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "app.log"
+            prefix = "one\ntwo\nthree\nfour\n"
+            path.write_text(prefix + "old!\n", encoding="utf-8")
+            output = StringIO()
+            reducer = _StreamReducer(output)
+            sleep_calls = 0
+
+            def rewrite_file(_: float) -> None:
+                nonlocal sleep_calls
+                sleep_calls += 1
+                if sleep_calls == 1:
+                    path.write_text(prefix + "new!\n", encoding="utf-8")
+                else:
+                    raise KeyboardInterrupt
+
+            with patch("qurtail.time.sleep", side_effect=rewrite_file):
+                with self.assertRaises(KeyboardInterrupt):
+                    qurtail._follow_file(path, 0, reducer)
+            reducer.finish()
+
+        self.assertEqual(output.getvalue(), prefix + "new!\n")
+
+    def test_file_follower_with_zero_context_detects_larger_rewrite(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "app.log"
+            prefix = "one\ntwo\nthree\nfour\n"
+            path.write_text(prefix + "old!\n", encoding="utf-8")
+            output = StringIO()
+            reducer = _StreamReducer(output)
+            sleep_calls = 0
+
+            def rewrite_file(_: float) -> None:
+                nonlocal sleep_calls
+                sleep_calls += 1
+                if sleep_calls == 1:
+                    path.write_text(prefix + "newer!\n", encoding="utf-8")
+                else:
+                    raise KeyboardInterrupt
+
+            with patch("qurtail.time.sleep", side_effect=rewrite_file):
+                with self.assertRaises(KeyboardInterrupt):
+                    qurtail._follow_file(path, 0, reducer)
+            reducer.finish()
+
+        self.assertEqual(output.getvalue(), prefix + "newer!\n")
+
+    def test_help_describes_only_the_supported_command_surface(self) -> None:
+        output = StringIO()
+        with self.assertRaises(SystemExit) as raised:
+            with patch.object(sys, "stdout", output):
+                main(["-h"])
+
+        self.assertEqual(raised.exception.code, 0)
+        help_text = output.getvalue()
+        for option in ("-f", "-F", "-n", "--dot-every", "qurtail run", "--raw-log"):
+            self.assertIn(option, help_text)
+        for removed in ("--similarity", "--history", "--config", "--mode"):
+            self.assertNotIn(removed, help_text)
+
+    def test_removed_options_are_rejected(self) -> None:
+        for option in ("--similarity", "--history", "--config", "--mode"):
+            with self.subTest(option=option):
+                errors = StringIO()
+                with self.assertRaises(SystemExit) as raised:
+                    with redirect_stderr(errors):
+                        main([option, "value"])
+                self.assertEqual(raised.exception.code, 2)
+                self.assertIn("unrecognized arguments", errors.getvalue())
+
+    def test_invalid_numeric_options_report_cli_errors(self) -> None:
+        for arguments, message in (
+            (["-n", "-1", "app.log"], "--lines must be zero or greater"),
+            (["--dot-every", "0"], "--dot-every must be at least 1"),
+            (["run", "--dot-every", "0", "--", "child"], "--dot-every must be at least 1"),
+        ):
+            with self.subTest(arguments=arguments):
+                errors = StringIO()
+                with self.assertRaises(SystemExit) as raised:
+                    with redirect_stderr(errors):
+                        main(arguments)
+                self.assertEqual(raised.exception.code, 2)
+                self.assertIn(message, errors.getvalue())
+
+    def test_version_matches_the_package_release(self) -> None:
+        output = StringIO()
+        with self.assertRaises(SystemExit) as raised:
+            with patch.object(sys, "stdout", output):
+                main(["--version"])
+
+        self.assertEqual(raised.exception.code, 0)
+        self.assertEqual(output.getvalue(), "qurtail 1.0.0\n")
+
+    def test_previous_python_api_is_removed(self) -> None:
+        self.assertFalse(hasattr(qurtail, "QurTail"))
+        self.assertFalse(hasattr(qurtail, "compress"))
 
 
 if __name__ == "__main__":

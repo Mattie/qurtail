@@ -1,4 +1,8 @@
-# Codex live workload replay
+# Historical pre-1.0 Codex workload replay
+
+> Archived evidence: this report preserves the commands, qurtail options, and results used by the
+> pre-1.0 implementation. Removed commands remain visible for provenance. This report is excluded
+> from current release gates.
 
 This corpus samples 4 verification workloads selected from Codex task records in separate local Git projects. The same source commands ran 2 times in this task, and the exact output Codex received was sanitized and replayed through the real qurtail CLI.
 

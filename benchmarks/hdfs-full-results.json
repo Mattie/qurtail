@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "run_date": "2026-08-10",
+  "run_environment": {
+    "platform": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "python": "3.12.3"
+  },
+  "qurtail_sha256": "a4ccbb73dc7fb82709d5bafee376f7cbc963ec4dafd8838dfce366bdff8c1fef",
+  "evaluator_sha256": {
+    "benchmarks/large_corpus.py": "c9cf32d99dd8414f61f829cfbe8eaacb8cc2929c458ff28939f6e0515c26043f",
+    "benchmarks/run_large_corpus.py": "d1827ad2734a638c40e0074262f5de0a5a442fa7d1b60fb9d8f46e3d95e7f102"
+  },
+  "manifest_sha256": "30c4f6708ab0292976afe3ac9aa5aa849aef8974f27321c7b1b994a23349fab4",
+  "corpus_index": {
+    "loghub-hdfs-v1": {
+      "sha256": "9b58262a6c8ca73ce54d03b79077f671195ec87ce76839e917d81459f5a5abd5",
+      "record": {
+        "id": "loghub-hdfs-v1",
+        "title": "Loghub HDFS v1 log and anomaly labels",
+        "family": "distributed-system",
+        "official_line_count": 11175629,
+        "expected_line_count": 11175629,
+        "lines": 11175629,
+        "bytes": 1577982906,
+        "log_files": [
+          {
+            "path": "loghub-hdfs-v1/HDFS.log",
+            "lines": 11175629,
+            "bytes": 1577982906,
+            "sha256": "0783096174d7832c618337f9609e06e04abd86ddd7089b3c12b407e63bfebc52"
+          }
+        ],
+        "label_files": [
+          {
+            "path": "loghub-hdfs-v1/preprocessed/anomaly_label.csv",
+            "lines": 575062,
+            "bytes": 18637554,
+            "sha256": "1c711ed6c8848fc3243fb4d092f172f31d128c8a6ec7f26ebba72ab931885ed8"
+          }
+        ],
+        "ground_truth": {
+          "kind": "block-label-csv",
+          "path": "preprocessed/anomaly_label.csv",
+          "unit": "block",
+          "expected_anomaly_units": 16838
+        }
+      }
+    }
+  },
+  "configuration": {
+    "limit": null,
+    "qurtail": true,
+    "qurtail_options": {
+      "dot_every": 10
+    }
+  },
+  "results": [
+    {
+      "dataset": "loghub-hdfs-v1",
+      "source_revision": "dd61d0952749ee7963bde24220d1be5ede023033",
+      "source_files": [
+        "loghub-hdfs-v1/HDFS.log"
+      ],
+      "ground_truth_kind": "block-label-csv",
+      "ground_truth_unit": "block",
+      "input_records": 11175629,
+      "input_bytes": 1577982906,
+      "available_anomaly_units": 16838,
+      "expected_anomaly_units": 16838,
+      "limit": null,
+      "elapsed_seconds": 174.01558887888677,
+      "baseline_scan_seconds": 72.3100413561333,
+      "qurtail_seconds": 101.70554752275348,
+      "methods": {
+        "raw": {
+          "output_records": 11175629,
+          "output_bytes": 1577982906,
+          "byte_reduction": 0.0,
+          "retained_anomaly_units": 16838,
+          "anomaly_unit_recall": 1.0
+        },
+        "grep": {
+          "output_records": 366506,
+          "output_bytes": 52350565,
+          "byte_reduction": 0.9668243776273201,
+          "retained_anomaly_units": 11406,
+          "anomaly_unit_recall": 0.6773963653640575
+        },
+        "adjacent_exact": {
+          "output_records": 11173511,
+          "output_bytes": 1577699240,
+          "byte_reduction": 0.0001797649384676081,
+          "retained_anomaly_units": 16838,
+          "anomaly_unit_recall": 1.0
+        },
+        "qurtail": {
+          "output_newlines": 11175628,
+          "output_characters": 1566563835,
+          "output_bytes": 1566563835,
+          "byte_reduction": 0.007236498542906311,
+          "retained_anomaly_units": 16838,
+          "anomaly_unit_recall": 1.0
+        }
+      },
+      "release_gates": {
+        "at_least_50000_records_per_second": true,
+        "all_available_anomaly_units_retained": true,
+        "complete_hdfs_replay_below_four_minutes": true
+      },
+      "release_gates_passed": true
+    }
+  ]
+}

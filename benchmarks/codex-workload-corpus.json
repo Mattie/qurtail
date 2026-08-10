@@ -1,4 +1,7 @@
 {
+  "status": "historical-pre-1.0",
+  "release_evidence": false,
+  "historical_note": "Archived pre-1.0 command replay. Removed CLI options and test names are retained as historical inputs and are excluded from current release claims.",
   "methodology": "Commands selected from Codex task records in multiple local Git projects were run twice by this Codex task. The exact command output received by the task was sanitized, combined, and replayed through the actual qurtail CLI.",
   "provenance": "The task records supplied command provenance and high-level success observations. Token measurements come from the fresh agent-reference and rerun executions.",
   "sanitization": [

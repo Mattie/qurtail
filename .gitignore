@@ -20,3 +20,9 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
+
+# Large benchmark corpora are downloaded and extracted locally.
+benchmarks/corpus/local/
+
+# Workstation backup retained outside the release tree.
+README_old.md

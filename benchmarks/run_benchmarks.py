@@ -1,4 +1,4 @@
-"""Generate reproducible qurtail benchmark reports from the development log corpus."""
+"""Evaluate qurtail on held-out, naturally ordered monitoring episodes."""
 
 from __future__ import annotations
 
@@ -7,21 +7,18 @@ from dataclasses import dataclass
 from io import StringIO
 import json
 from pathlib import Path
-import re
+import statistics
 import sys
 from typing import Callable
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from qurtail import compress  # noqa: E402
+from qurtail import _StreamReducer  # noqa: E402
 
 
-CORPUS_PATH = ROOT / "tests" / "fixtures" / "log_corpus.json"
-BENCHMARKS_PATH = ROOT / "benchmarks"
+SKILL_PATH = ROOT / "skills" / "qurtail-fluency" / "SKILL.md"
 ENCODING_NAME = "o200k_base"
-REPEATS_BEFORE_FAILURE = 120
-REPEATS_AFTER_FAILURE = 30
 DEPENDENCY_HELP = (
     "Install benchmark dependencies with "
     "'python -m pip install -r benchmarks/requirements.txt'."
@@ -29,200 +26,226 @@ DEPENDENCY_HELP = (
 
 
 @dataclass(frozen=True)
-class Scenario:
-    """Describe an agent task, source format, filter, and qurtail configuration."""
+class Episode:
+    """Describe one monitoring decision and the evidence it must retain."""
 
     slug: str
-    title: str
-    role: str
+    category: str
     task: str
-    case_name: str
-    grep_pattern: str
-    variation_pattern: str
-    variation_template: str
-    options: dict[str, object]
+    expected_decision: str
+    lines: tuple[str, ...]
+    required_blocks: tuple[tuple[str, ...], ...]
+    repetitive: bool
 
 
-SCENARIOS = (
-    Scenario(
-        slug="swe-test-debugging",
-        title="SWE test teardown debugging",
-        role="Software engineer",
-        task=(
-            "Follow a noisy pytest run long enough to retain ordinary test progress and "
-            "notice a teardown failure that can leave later tests contaminated."
-        ),
-        case_name="pytest-live-log",
-        grep_pattern=r"ERROR|CRITICAL|FAILED|Traceback",
-        variation_pattern=r"case \d+",
-        variation_template="case {number}",
-        options={
-            "mode": "dots",
-            "dot_every": 10,
-            "similarity": 0.90,
-            "ignore_levels": False,
+def _timestamp(second: int) -> str:
+    """Build a deterministic ISO timestamp for a generated source record."""
+    minute, second = divmod(second, 60)
+    hour, minute = divmod(minute, 60)
+    return f"2026-08-08T{12 + hour:02d}:{minute:02d}:{second:02d}Z"
+
+
+def _cache_episode() -> Episode:
+    """Build repetitive request traffic around one operational failure."""
+    ordinary = tuple(
+        f"{_timestamp(index)} INFO refreshed cache request_id={index:08x}"
+        for index in range(600)
+    )
+    failure = (
+        f"{_timestamp(600)} ERROR cache refresh failed: connection refused"
+    )
+    lines = ordinary + (failure,)
+    return Episode(
+        slug="cache-refresh-failure",
+        category="error",
+        task="Monitor cache refreshes and explain why the refresh stopped.",
+        expected_decision="Investigate the refused cache connection.",
+        lines=lines,
+        required_blocks=((failure,),),
+        repetitive=True,
+    )
+
+
+def _http_episode() -> Episode:
+    """Build repetitive access traffic around an HTTP status transition."""
+    ordinary = tuple(
+        f'127.0.0.1 [08/Aug/2026:09:{30 + index // 60:02d}:{index % 60:02d} -0500] '
+        '"GET /health HTTP/1.1" 200 17'
+        for index in range(600)
+    )
+    failure = (
+        '127.0.0.1 [08/Aug/2026:09:40:00 -0500] '
+        '"GET /health HTTP/1.1" 503 17'
+    )
+    lines = ordinary + (failure,)
+    return Episode(
+        slug="health-status-transition",
+        category="status",
+        task="Monitor the health endpoint and decide whether it stayed available.",
+        expected_decision="Treat the 503 transition as an availability incident.",
+        lines=lines,
+        required_blocks=((failure,),),
+        repetitive=True,
+    )
+
+
+def _json_episode() -> Episode:
+    """Build JSON metadata churn around a changed structured error payload."""
+    ordinary = tuple(
+        json.dumps(
+            {
+                "time": index,
+                "pid": 4100 + index % 3,
+                "hostname": f"worker-{index % 2}",
+                "level": "info",
+                "requestId": f"req-{index:08x}",
+                "message": "background sync complete",
+            },
+            separators=(",", ":"),
+        )
+        for index in range(600)
+    )
+    failure = json.dumps(
+        {
+            "time": 600,
+            "pid": 4100,
+            "hostname": "worker-0",
+            "level": "error",
+            "requestId": "req-failure",
+            "error": {"code": "EACCES", "message": "permission denied"},
+            "message": "background sync failed",
         },
-    ),
-    Scenario(
-        slug="swe-pino-cache-debugging",
-        title="SWE Pino cache refresh debugging",
-        role="Software engineer",
+        separators=(",", ":"),
+    )
+    lines = ordinary + (failure,)
+    return Episode(
+        slug="structured-permission-failure",
+        category="structured-error",
+        task="Monitor background synchronization and identify its failure detail.",
+        expected_decision="Fix the EACCES permission failure.",
+        lines=lines,
+        required_blocks=((failure,),),
+        repetitive=True,
+    )
+
+
+def _traceback_episode() -> Episode:
+    """Build routine worker traffic around one complete traceback block."""
+    ordinary = tuple(
+        f"{_timestamp(index)} INFO worker heartbeat trace_id={index:032x}"
+        for index in range(600)
+    )
+    block = (
+        "Traceback (most recent call last):",
+        '  File "worker.py", line 41, in refresh',
+        "    cache.write(payload)",
+        "OSError: disk full",
+    )
+    lines = ordinary + block
+    return Episode(
+        slug="worker-traceback",
+        category="multiline",
         task=(
-            "Follow a JSON application stream while retaining the error-level cache refresh "
-            "event that looks nearly identical to ordinary successful refreshes."
+            "Monitor the worker crash, identify its cause, and decide what to do "
+            "before restarting it."
         ),
-        case_name="pino-json",
-        grep_pattern=r'"level":[5-9][0-9]|error|fatal|panic',
-        variation_pattern=r"key=\d+",
-        variation_template="key={number}",
-        options={
-            "mode": "dots",
-            "dot_every": 10,
-            "similarity": 0.90,
-            "message_field": "msg",
-        },
-    ),
-    Scenario(
-        slug="swe-opentelemetry-sync-debugging",
-        title="SWE OpenTelemetry sync debugging",
-        role="Software engineer",
+        expected_decision="Free disk space before restarting the worker.",
+        lines=lines,
+        required_blocks=(block,),
+        repetitive=True,
+    )
+
+
+def _resumed_pattern_episode() -> Episode:
+    """Build an incident followed by a resumed earlier pattern."""
+    before = tuple(
+        f"{_timestamp(index)} INFO worker heartbeat request_id={index:08x}"
+        for index in range(300)
+    )
+    failure = (
+        f"{_timestamp(300)} ERROR heartbeat transport: connection refused"
+    )
+    after = tuple(
+        f"{_timestamp(index)} INFO worker heartbeat request_id={index:08x}"
+        for index in range(301, 401)
+    )
+    return Episode(
+        slug="resumed-pattern-after-incident",
+        category="resumed-pattern",
         task=(
-            "Follow flattened OpenTelemetry records while preserving the error severity "
-            "transition in a repetitive background synchronization task."
+            "Monitor worker heartbeats, identify the incident, and decide whether "
+            "successful heartbeats resumed."
         ),
-        case_name="opentelemetry-json",
-        grep_pattern=(
-            r'"severityText":"(Error|Fatal)"|'
-            r'"severityNumber":(1[7-9]|2[0-4])|error|fatal'
+        expected_decision=(
+            "Investigate the refused connection and note that heartbeats resumed."
         ),
-        variation_pattern=r"page=\d+",
-        variation_template="page={number}",
-        options={
-            "mode": "dots",
-            "dot_every": 10,
-            "similarity": 0.90,
-            "message_field": "body.stringValue",
-        },
-    ),
-    Scenario(
-        slug="it-kubernetes-troubleshooting",
-        title="IT Kubernetes rollout troubleshooting",
-        role="IT operator",
-        task=(
-            "Follow deployment reconciliation traffic while preserving the crash-loop event "
-            "needed to diagnose a rollout that never becomes ready."
-        ),
-        case_name="kubernetes-cri",
-        grep_pattern=r"stderr|error|fail|crash|panic",
-        variation_pattern=r"generation=\d+",
-        variation_template="generation={number}",
-        options={
-            "mode": "dots",
-            "dot_every": 10,
-            "similarity": 0.90,
-            "ignore_timestamps": True,
-            "ignore_prefixes": ("stdout F", "stderr F"),
-        },
-    ),
-    Scenario(
-        slug="it-syslog-queue-troubleshooting",
-        title="IT syslog queue troubleshooting",
-        role="IT operator",
-        task=(
-            "Follow repetitive RFC 5424 queue polling while retaining the priority change "
-            "that signals an operational fault."
-        ),
-        case_name="rfc5424-syslog",
-        grep_pattern=r"^<1[0-3]>",
-        variation_pattern=r"batch=\d+",
-        variation_template="batch={number}",
-        options={
-            "mode": "dots",
-            "dot_every": 10,
-            "similarity": 0.92,
-        },
-    ),
-    Scenario(
-        slug="it-windows-service-troubleshooting",
-        title="IT Windows service troubleshooting",
-        role="IT operator",
-        task=(
-            "Follow projected Windows events while preserving the error heartbeat needed to "
-            "identify a failing application service."
-        ),
-        case_name="windows-event-json",
-        grep_pattern=r'"LevelDisplayName":"(Error|Critical)"|"Id":1001',
-        variation_pattern=r"batch=\d+",
-        variation_template="batch={number}",
-        options={
-            "mode": "dots",
-            "dot_every": 10,
-            "similarity": 0.90,
-            "message_field": "Message",
-        },
-    ),
-    Scenario(
-        slug="dba-docker-startup",
-        title="DBA container database startup diagnosis",
-        role="Database administrator",
-        task=(
-            "Follow container health traffic while retaining the refused database connection "
-            "that explains why an application replica cannot start."
-        ),
-        case_name="docker-json-file",
-        grep_pattern=r'"stream":"stderr"|error|fail|panic|refused',
-        variation_pattern=r"replica=\d+",
-        variation_template="replica={number}",
-        options={
-            "mode": "dots",
-            "dot_every": 10,
-            "similarity": 0.90,
-            "message_field": "log",
-        },
-    ),
-    Scenario(
-        slug="dba-python-lock-diagnosis",
-        title="DBA Python database lock diagnosis",
-        role="Database administrator",
-        task=(
-            "Follow repetitive Python worker progress while retaining the teardown failure "
-            "that reports a locked database."
-        ),
-        case_name="python-logging",
-        grep_pattern=r"ERROR|CRITICAL|database is locked|deadlock|timeout",
-        variation_pattern=r"shard \d+",
-        variation_template="shard {number}",
-        options={
-            "mode": "dots",
-            "dot_every": 10,
-            "similarity": 0.90,
-            "ignore_timestamps": True,
-        },
-    ),
-    Scenario(
-        slug="dba-journal-filesystem-diagnosis",
-        title="DBA journal filesystem diagnosis",
-        role="Database administrator",
-        task=(
-            "Follow routine journal traffic while retaining the filesystem write error that "
-            "threatens the application database."
-        ),
-        case_name="linux-journal-short-iso",
-        grep_pattern=r"kernel:|EXT4|I/O error|database",
-        variation_pattern=r"key=\d+",
-        variation_template="key={number}",
-        options={
-            "mode": "dots",
-            "dot_every": 10,
-            "similarity": 0.90,
-            "ignore_timestamps": True,
-        },
-    ),
+        lines=before + (failure,) + after,
+        required_blocks=((failure,), (after[0],)),
+        repetitive=True,
+    )
+
+
+def _numeric_episode() -> Episode:
+    """Build a nonrepetitive numeric state transition that must fail open."""
+    lines = (
+        "replication lag is 1 second",
+        "replication lag is 12 seconds",
+        "replication lag is 900 seconds",
+    )
+    return Episode(
+        slug="replication-lag-change",
+        category="numeric-change",
+        task="Monitor replication lag and decide whether it is safe.",
+        expected_decision="Escalate the 900-second replication lag.",
+        lines=lines,
+        required_blocks=((lines[-1],),),
+        repetitive=False,
+    )
+
+
+def _malformed_episode() -> Episode:
+    """Build malformed and ambiguous records that must remain visible."""
+    lines = (
+        "{malformed request 1",
+        "{malformed request 1",
+        "  ambiguous continuation",
+        "unknown shape value=17",
+        "unknown shape value=18",
+    )
+    return Episode(
+        slug="malformed-records",
+        category="fail-open",
+        task="Monitor an unfamiliar source without losing uncertain evidence.",
+        expected_decision="Inspect the raw source before adding a recognizer.",
+        lines=lines,
+        required_blocks=tuple((line,) for line in lines),
+        repetitive=False,
+    )
+
+
+EPISODES = (
+    _cache_episode(),
+    _http_episode(),
+    _json_episode(),
+    _traceback_episode(),
+    _resumed_pattern_episode(),
+    _numeric_episode(),
+    _malformed_episode(),
 )
 
 
+class _LogicalClock:
+    """Provide deterministic replay time without sleeping."""
+
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
 def _load_tiktoken():
-    """Load the optional tokenizer used only for benchmark report generation."""
+    """Load the optional tokenizer used for release benchmark measurements."""
     try:
         import tiktoken
     except ImportError as error:
@@ -230,247 +253,155 @@ def _load_tiktoken():
     return tiktoken
 
 
-def _validate_toml(config: str) -> None:
-    """Validate generated config with the standard library or its Python 3.10 backport."""
-    try:
-        import tomllib
-    except ModuleNotFoundError:
-        try:
-            import tomli as tomllib
-        except ImportError as error:
-            raise SystemExit(DEPENDENCY_HELP) from error
-    tomllib.loads(config)
-
-
-def _load_cases() -> dict[str, dict[str, object]]:
-    """Load corpus cases by stable case name."""
-    corpus = json.loads(CORPUS_PATH.read_text(encoding="utf-8"))
-    return {case["name"]: case for case in corpus["cases"]}
-
-
-def _vary_recurring(line: str, scenario: Scenario, number: int) -> str:
-    """Change one stable fixture identifier to create similar, non-identical noise."""
-    replacement = scenario.variation_template.format(number=number)
-    varied, replacements = re.subn(
-        scenario.variation_pattern, replacement, line, count=1
-    )
-    if replacements != 1:
-        raise ValueError(
-            f"{scenario.slug}: variation pattern did not match exactly once"
-        )
-    return varied
-
-
-def _stream(
-    case: dict[str, object], scenario: Scenario
-) -> tuple[list[str], str, str]:
-    """Build a deterministic noisy stream around the case's exceptional line."""
-    baseline, recurring, failure = case["lines"]
-    recurring_lines = [
-        _vary_recurring(recurring, scenario, number)
-        for number in range(
-            42, 42 + REPEATS_BEFORE_FAILURE + REPEATS_AFTER_FAILURE
-        )
-    ]
-    lines = (
-        [baseline]
-        + recurring_lines[:REPEATS_BEFORE_FAILURE]
-        + [failure]
-        + recurring_lines[REPEATS_BEFORE_FAILURE:]
-    )
-    return lines, baseline, failure
-
-
-def _tail(lines: list[str]) -> str:
-    """Return every line, matching a naive tail consumer."""
+def _raw_output(lines: tuple[str, ...]) -> str:
+    """Render the unfiltered monitoring view."""
     return "".join(line + "\n" for line in lines)
 
 
-def _grep(lines: list[str], pattern: str) -> str:
-    """Return lines accepted by a conventional case-insensitive grep filter."""
-    expression = re.compile(pattern, re.IGNORECASE)
-    return "".join(line + "\n" for line in lines if expression.search(line))
-
-
-def _qurtail(lines: list[str], options: dict[str, object]) -> str:
-    """Compress the stream through qurtail's public finite-stream interface."""
+def _qurtail_output(lines: tuple[str, ...]) -> str:
+    """Render one finite episode through the production reducer."""
     output = StringIO()
-    compress((line + "\n" for line in lines), output, **options)
+    reducer = _StreamReducer(output, dot_every=10)
+    for line in lines:
+        reducer.process(line)
+    reducer.finish()
     return output.getvalue()
 
 
-def _has_marker_line(output: str) -> bool:
-    """Return whether output contains a line made only from qurtail dot markers."""
-    return any(line and set(line) == {"."} for line in output.splitlines())
+def _block_visible(output: str, block: tuple[str, ...]) -> bool:
+    """Check that every line in a required diagnostic block stayed contiguous."""
+    return "\n".join(block) + "\n" in output
 
 
-def _format_config(options: dict[str, object]) -> str:
-    """Render options as standard TOML accepted by qurtail."""
-    lines = ["[qurtail]"]
-    for name, value in options.items():
-        if isinstance(value, bool):
-            rendered = "true" if value else "false"
-        elif isinstance(value, (tuple, list)):
-            rendered = json.dumps(", ".join(str(item) for item in value))
-        elif isinstance(value, float):
-            rendered = f"{value:.2f}"
-        elif isinstance(value, str):
-            rendered = json.dumps(value)
-        else:
-            rendered = str(value)
-        lines.append(f"{name} = {rendered}")
-    config = "\n".join(lines)
-    _validate_toml(config)
-    return config
-
-
-def _yes_no(value: bool) -> str:
-    """Format a benchmark outcome as a compact Markdown value."""
-    return "yes" if value else "no"
-
-
-def _render_report(
-    scenario: Scenario,
-    case: dict[str, object],
-    count_tokens: Callable[[str], int],
-    tokenizer_version: str,
-) -> str:
-    """Render one benchmark scenario and its measured outcomes."""
-    lines, baseline, failure = _stream(case, scenario)
-    outputs = {
-        "Naive tail": _tail(lines),
-        "Tail plus grep": _grep(lines, scenario.grep_pattern),
-        "Qurtail": _qurtail(lines, scenario.options),
+def evaluate_logical_clock_replay() -> dict[str, object]:
+    """Exercise a periodic summary over logical time without wall-clock delay."""
+    output = StringIO()
+    clock = _LogicalClock()
+    reducer = _StreamReducer(
+        output,
+        dot_every=1,
+        summary_interval=30.0,
+        clock=clock,
+    )
+    reducer.process("INFO worker heartbeat")
+    clock.now = 1.0
+    reducer.process("INFO worker heartbeat")
+    clock.now = 31.0
+    reducer.tick()
+    reducer.finish()
+    rendered = output.getvalue()
+    expected = "INFO worker heartbeat\n. [1 similar in 30s]\n"
+    return {
+        "source_duration_seconds": 31.0,
+        "wall_clock_sleep_seconds": 0.0,
+        "output": rendered,
+        "expected_output": expected,
+        "passed": rendered == expected,
     }
-    if baseline in outputs["Tail plus grep"] or failure not in outputs["Tail plus grep"]:
-        raise ValueError(f"{scenario.slug}: grep outcome no longer matches the scenario")
-    if not (
-        baseline in outputs["Qurtail"]
-        and failure in outputs["Qurtail"]
-        and _has_marker_line(outputs["Qurtail"])
-    ):
-        raise ValueError(f"{scenario.slug}: qurtail did not retain all measured signals")
-    tail_tokens = count_tokens(outputs["Naive tail"])
-    rows = []
-    for method, output in outputs.items():
-        tokens = count_tokens(output)
-        reduction = 100 * (tail_tokens - tokens) / tail_tokens
-        recurrence_visible = (
-            method == "Naive tail"
-            or method == "Qurtail"
-            and _has_marker_line(output)
-        )
-        rows.append(
-            "| "
-            + " | ".join(
-                (
-                    method,
-                    str(output.count("\n")),
-                    str(tokens),
-                    f"{reduction:.1f}%",
-                    _yes_no(baseline in output),
-                    _yes_no(recurrence_visible),
-                    _yes_no(failure in output),
-                )
-            )
-            + " |"
-        )
-
-    config = _format_config(scenario.options)
-    return f"""# {scenario.title}
-
-**Role:** {scenario.role}
-
-**Task:** {scenario.task}
-
-**Format:** {case['format']} ([source]({case['source']}))
-
-## Input
-
-The deterministic stream contains one baseline line, {REPEATS_BEFORE_FAILURE} varying recurring lines, one context-relevant failure, and {REPEATS_AFTER_FAILURE} more varying recurring lines. Token counts cover emitted log text only.
-
-The grep expression and qurtail config are both tuned for this scenario. This benchmark measures emitted tokens and retained evidence on a synthetic corpus-derived stream; it does not measure live I/O performance or whether an agent completes the diagnosis.
-
-## Qurtail config
-
-```toml
-{config}
-```
-
-## Compared commands
-
-- Naive tail: `tail -f <log>`
-- Tail plus grep: `tail -f <log> | grep -Ei '{scenario.grep_pattern}'`
-- Qurtail: `qurtail -c benchmarks/{scenario.slug}.toml -f <log>`
-
-The benchmark runner applies the equivalent finite-stream selection and compression through Python.
-
-## Results
-
-Tokenizer: `tiktoken {tokenizer_version}`, encoding `{ENCODING_NAME}`.
-
-| Method | Output lines | Tokens | Token reduction vs tail | Baseline context | Recurrence visible | Failure retained |
-| --- | ---: | ---: | ---: | --- | --- | --- |
-{chr(10).join(rows)}
-
-## Outcome
-
-Naive tail retains all evidence and spends the most context on recurring output. Tail plus grep retains the anticipated failure with the fewest tokens and drops ordinary context and recurrence evidence; qurtail retains all three measured signals while reducing emitted tokens.
-
-Reproduce with `python benchmarks/run_benchmarks.py` after installing `benchmarks/requirements.txt`.
-"""
 
 
-def _artifacts() -> dict[Path, str]:
-    """Generate every report and reusable override from the current implementation."""
-    cases = _load_cases()
-    tiktoken = _load_tiktoken()
-    tokenizer = tiktoken.get_encoding(ENCODING_NAME)
+def evaluate_episode(
+    episode: Episode,
+    count_tokens: Callable[[str], int],
+) -> dict[str, object]:
+    """Measure token cost and required evidence for one monitoring episode."""
+    setup = (
+        SKILL_PATH.read_text(encoding="utf-8")
+        + "\n$ qurtail -F -n 50 app.log\n"
+        + episode.task
+        + "\n"
+    )
+    raw = _raw_output(episode.lines)
+    compact = _qurtail_output(episode.lines)
+    raw_tokens = count_tokens(setup + raw)
+    compact_tokens = count_tokens(setup + compact)
+    reduction = 0.0 if raw_tokens == 0 else 1 - compact_tokens / raw_tokens
+    retained = all(
+        _block_visible(compact, block) for block in episode.required_blocks
+    )
+    return {
+        "slug": episode.slug,
+        "category": episode.category,
+        "task": episode.task,
+        "expected_decision": episode.expected_decision,
+        "repetitive": episode.repetitive,
+        "input_records": len(episode.lines),
+        "raw_tokens": raw_tokens,
+        "qurtail_tokens": compact_tokens,
+        "token_reduction": reduction,
+        "required_blocks": len(episode.required_blocks),
+        "all_required_blocks_visible": retained,
+    }
 
-    def count_tokens(text: str) -> int:
-        return len(tokenizer.encode(text))
 
-    artifacts = {}
-    for scenario in SCENARIOS:
-        artifacts[BENCHMARKS_PATH / f"{scenario.slug}.md"] = _render_report(
-            scenario,
-            cases[scenario.case_name],
-            count_tokens,
-            tiktoken.__version__,
-        )
-        artifacts[BENCHMARKS_PATH / f"{scenario.slug}.toml"] = (
-            _format_config(scenario.options) + "\n"
-        )
-    return artifacts
+def evaluate_suite(
+    count_tokens: Callable[[str], int],
+) -> dict[str, object]:
+    """Evaluate release safety and token gates across all held-out episodes."""
+    results = [evaluate_episode(episode, count_tokens) for episode in EPISODES]
+    repetitive_reductions = [
+        float(result["token_reduction"])
+        for result in results
+        if result["repetitive"]
+    ]
+    nonrepetitive_inflation = [
+        -float(result["token_reduction"])
+        for result in results
+        if not result["repetitive"]
+    ]
+    median_reduction = statistics.median(repetitive_reductions)
+    maximum_inflation = max(nonrepetitive_inflation, default=0.0)
+    all_evidence_visible = all(
+        bool(result["all_required_blocks_visible"]) for result in results
+    )
+    logical_clock_replay = evaluate_logical_clock_replay()
+    gates = {
+        "all_required_blocks_visible": all_evidence_visible,
+        "median_repetitive_token_reduction_at_least_80_percent": (
+            median_reduction >= 0.80
+        ),
+        "nonrepetitive_token_inflation_at_most_2_percent": (
+            maximum_inflation <= 0.02
+        ),
+        "logical_clock_summary_replay": bool(logical_clock_replay["passed"]),
+    }
+    return {
+        "schema_version": 1,
+        "episodes": results,
+        "summary": {
+            "median_repetitive_token_reduction": median_reduction,
+            "maximum_nonrepetitive_token_inflation": maximum_inflation,
+        },
+        "logical_clock_replay": logical_clock_replay,
+        "gates": gates,
+        "passed": all(gates.values()),
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Write reports, or verify that committed reports match current measurements."""
+    """Run the held-out episode suite and optionally retain its JSON result."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--check", action="store_true", help="fail when a benchmark report is stale"
+        "--output",
+        type=Path,
+        help="write the complete machine-readable result",
     )
     args = parser.parse_args(argv)
-    artifacts = _artifacts()
-
-    if args.check:
-        stale = [
-            path
-            for path, content in artifacts.items()
-            if not path.exists() or path.read_text(encoding="utf-8") != content
-        ]
-        if stale:
-            for path in stale:
-                print(f"stale benchmark report: {path.relative_to(ROOT)}", file=sys.stderr)
-            return 1
-        print(f"{len(SCENARIOS)} benchmark reports and configs are current")
-        return 0
-
-    for path, content in artifacts.items():
-        with path.open("w", encoding="utf-8", newline="\n") as destination:
-            destination.write(content)
-        print(f"wrote {path.relative_to(ROOT)}")
-    return 0
+    tiktoken = _load_tiktoken()
+    tokenizer = tiktoken.get_encoding(ENCODING_NAME)
+    result = evaluate_suite(lambda text: len(tokenizer.encode(text)))
+    result["tokenizer"] = {
+        "package": f"tiktoken {tiktoken.__version__}",
+        "encoding": ENCODING_NAME,
+    }
+    serialized = json.dumps(result, indent=2) + "\n"
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(serialized, encoding="utf-8")
+        print(f"wrote {args.output}")
+    else:
+        print(serialized, end="")
+    return 0 if result["passed"] else 1
 
 
 if __name__ == "__main__":

@@ -4,169 +4,176 @@
 
 ----
 
-`qurtail` is a quirky version of `tail` for noisy logs.
+`qurtail` is a small stream compactor built for coding agents. It is the normal way for an agent
+to follow a noisy log or run a command that is expected to produce long, repetitive output.
 
-It watches a stream of lines and compares each new line to the recent lines it has already seen.
-If a new line is very similar to an earlier one, it suppresses that full line and prints a short
-marker such as `.` instead, without adding a newline. That helps you **q**uell **u**nwanted **r**epetition without
-letting it flood the terminal.
+It keeps the first example of each log pattern, recognizes common values that change on every
+line, and replaces later repetitions with buffered dot runs and compact closing counts. Warnings,
+errors, status changes, unfamiliar numbers, and multiline diagnostics stay visible.
 
-When the line is meaningfully different, `qurtail` prints the full line normally.
+The result is a much smaller stream for the agent to read, with enough context to understand
+what repeated and how often.
 
-The goal is to preserve signal while compressing repetition.
+## Product Boundary
+
+Qurtail is a local streaming view over a file, standard input, or a child command. It does not
+store logs unless raw capture is explicitly requested, query history, diagnose failures, manage
+remote sources, alert people, send telemetry, call a model, or provide an observability service.
+The original file, captured raw output, or upstream stream remains the source of truth.
+
+The common path requires no project configuration.
 
 ## Usage and Installation
 
-Works cleanly by default in bash with `qurtail -f my.log` out of the box, no need to prefix with python.
+Run qurtail without installing it permanently:
 
-It has the same defaults as `tail -f` and can be used in a pipeline, e.g. `my_command | qurtail`.
+```bash
+uvx qurtail -F -n 50 app.log
+```
 
-Example:
+Or install it as a standalone command:
+
+```bash
+uv tool install qurtail
+```
+
+```bash
+pipx install qurtail
+```
+
+Qurtail requires Python 3.11 or newer and has no runtime dependencies.
+
+Follow a file with its last 50 lines of context:
+
+```bash
+qurtail -F -n 50 app.log
+```
+
+`-f` and `-F` both keep following through truncation, replacement, and log rotation. `-n`
+controls how many existing lines are read when the file is opened. The default is 10, matching
+`tail`.
+
+When the agent launches a noisy command, use qurtail's command runner:
+
+```bash
+qurtail run -- pytest -q
+```
+
+Qurtail streams the child command's combined standard output and standard error through the same
+conservative reducer. Arguments after `--` are passed to the command without implicit shell
+interpretation. Interrupting qurtail interrupts and reaps the child process, and qurtail returns
+the child's success or failure status so a failed test, build, or installer cannot look successful
+merely because the compacting process exited normally.
+
+Use the runner when qurtail launches a container or cluster log command:
+
+```bash
+qurtail run -- docker logs -f api
+```
+
+```bash
+qurtail run -- kubectl logs -f deploy/api --timestamps
+```
+
+Qurtail can still read a live stream from standard input when another process owns the pipeline:
+
+```bash
+producer 2>&1 | qurtail
+```
+
+Without `-f` or `-F`, a file is read once and qurtail exits. With no file argument or `run`
+subcommand, qurtail reads standard input until the upstream stream closes.
+
+Run `qurtail -h` for the complete command reference.
+
+Each suppressed record produces one dot by default. For very busy sources, `--dot-every N`
+produces one dot for every N suppressed records:
+
+```bash
+qurtail -F --dot-every 10 app.log
+```
+
+### What the output looks like
 
 ```text
-> qurtail -f my.log
-starting worker 17
-.....
-connection reset by peer
-..............................
-finished batch 42
+> qurtail -F -n 50 app.log
+2026-08-08T12:00:00Z INFO refreshed cache request_id=715a
+........ [8 similar in 1s]
+2026-08-08T12:00:09Z ERROR cache refresh failed: connection refused
+..... [5 similar before stop]
 ```
 
-It provides help information with `qurtail -h` and can be installed locally by cloning this repo and running pip install -e . in the root directory.
+The first line from a pattern is always printed in full. Dots are the live activity signal while
+similar records continue. Qurtail buffers them into short runs before writing, which reduces agent
+output overhead without making an active stream look stalled. When the pattern changes, 30 seconds
+pass, or monitoring stops, qurtail closes the run with the exact repeat count and a newline.
+Summaries never use backspaces or carriage-return updates.
 
-### Log rotation
+## How Matching Works
 
-Detect truncation, replacement, and log rotation like `tail -F`. This works automatically with `qurtail -f my.log`.
+Qurtail uses one conservative streaming signature reducer with bounded per-stream state. It builds
+an indexed signature for each visible pattern and recognizes a small set of corpus-proven volatile
+values such as:
 
-## RC Config options
+- timestamps;
+- UUIDs;
+- request, trace, and span identifiers;
+- standard JSON log metadata; and
+- stable container or service prefixes.
 
-### Display options
+Unknown changing values remain visible. Qurtail does not use a broad fuzzy-similarity threshold,
+so a change such as `replication lag is 1 second` to `replication lag is 900 seconds` is printed in
+full. Unknown shapes, ambiguous values, malformed records, and uncertain multiline continuations
+also remain visible.
 
-#### Spinner
-It supports rc config options to include a spinning mode that rotates instead of printing a dot:
+The matcher also keeps these records intact:
 
-**~/.qurtailrc** example:
-```toml
-[qurtail]
-mode = spinner
-spinner = |/-\
-```
+- warning, error, and fatal transitions;
+- HTTP status changes;
+- changed structured error payloads;
+- same-level errors with different details; and
+- traceback, stack trace, and other multiline diagnostic blocks.
 
-#### Reduced output
-It supports rc config options to reduce output by printing a single dot for each suppressed line, or a single dot for each N suppressed lines:
+A suppressed record increments the count for its visible pattern. Repeated identical errors may be
+summarized after one complete exemplar; changed errors and their complete multiline diagnostics
+remain visible. A suppressed record cannot become a hidden example that causes another line to
+disappear later.
 
-```toml
-[qurtail]
-mode = dots
-dot_every = 1
-```
+## Raw Log Recovery
 
-#### Color customization
-
-qurtail supports color customization for the spinner and the dot marker. You can set the colors in your rc file:
-
-```toml
-[qurtail]
-spinner_color = green
-dot_color = yellow
-```
-
-#### Counts
-
-Replace long dot runs with an updating summary such as `[127 similar lines, 8s]`. It preserves frequency information without terminal noise.
-
-```toml
-[qurtail]
-mode = counts
-```
-
-### Matching and filtering
-
-#### Similarity threshold and log format recognition
-It also supports config options to set the similarity threshold for suppressing lines, and it recognizes many common log formats and supports rc options ignore_timestamps, ignore_levels, and comma-separated ignore_prefixes.
-
-```toml
-[qurtail]
-similarity = 0.90
-ignore_timestamps = yes
-ignore_levels = no
-ignore_prefixes = my-app:, worker:
-poll_interval = 0.2
-```
-(which also work on the command-line as `--similarity`, `--ignore-timestamps`, `--ignore-levels`, `--ignore-prefixes`, and `--poll-interval`)
-
-#### Regex filtering
-It also supports regex filtering of lines to include or exclude, e.g. to only show lines that contain the word "error" or to exclude lines that contain "debug":
-
-```toml
-[qurtail]
-include_regex = error
-exclude_regex = debug
-```
-
-(which also work on the command-line as `--include-regex` and `--exclude-regex`)
-
-#### JSONLOG
-
-Parse JSON logs and compare selected fields, with options such as `ignore_fields = timestamp,request_id` and `message_field = msg`.
-
-```toml
-[qurtail]
-ignore_fields = timestamp, request_id
-message_field = msg
-```
-
-#### COMPARISON_FILE
-
-Compare lines to a reference file and treat anything similar to the lines in those as "similar" and suppress them. This is useful for filtering out known noise from a log stream.
-
-```toml
-[qurtail]
-comparison_file = known-noise.log
-```
-
-#### ROTATE-SAMPLE
-
-Print every Nth suppressed line or one sample every N seconds. This gives visibility into recurring traffic without restoring the flood.
-
-```toml
-[qurtail]
-rotate_sample = 10
-```
-
-#### Custom Config File for Reusable Configurations
-
-You can specify a custom config file to store reusable configurations. This allows you to maintain different sets of configurations and switch between them easily via the command line.
+Qurtail is a compact monitoring view. The followed file remains the source of truth whenever the
+agent needs the exact suppressed records. For child commands, request a raw transcript explicitly:
 
 ```bash
-qurtail -c /path/to/custom_config.toml -f my.log
+qurtail run --raw-log api.raw.log -- docker logs -f api
 ```
 
-##### Extra Overrides for Specific Options
-
-With support for extra cascade overrides for specific options, you can have a base configuration and override specific settings for different log files or environments. This style here leverages the local base config file but overrides only the settings that are different for this run. This is highly recommended for skills to include for their specific agentic workloads. 
+For stdin-only sources, keep raw output upstream when recovery matters. For example:
 
 ```bash
-qurtail -x /path/to/narrow_config.toml -f my.log
+docker logs -f api 2>&1 | tee api.raw.log | qurtail
 ```
+
+Qurtail does not create its own transcript or retain a second copy of the stream unless
+`--raw-log` is supplied. Before drawing a conclusion that depends on a suppressed value, the agent
+consults the original file or captured raw output.
 
 ## Benchmarks
 
-We created benchmark cases of the most common log formats and compared naive `tail` and `qurtail` follows-- the goal is to compare the number of tokens used while an agent focuses on a specific task as well as context-relevant error/warning conditions.
+The benchmark suite includes regression fixtures, held-out monitoring episodes, and large-corpus runs. 
 
-Each benchmark (3x of each type) explains the SWE/IT/DBA agentic development, fix, troubleshooting, or debugging task it is trying to perform on behalf of the user. Each includes the intelligent config it created for qurtail for its specific needs in that scenario. The run is compared with a naive tail follow as well as a tail/grep follow to show the difference in token usage and improved outcomes. 
-
-We even created a (sanitized) log corpus based on our own live Codex workloads from multiple projects across different technologies that leveraged tail-like cases against local logs. We reran actual agentic commands to compare the outputs to what the original agent used. We list exactly which command lines were used to monitor the log by the agents originally.
-
-See the benchmark results in the MD files in the `benchmarks` folder. 
+The suite runs installed-command smoke tests on Linux, macOS, and Windows. See more in
+`benchmarks/README.md`.
 
 ## Skills
 
-Included is an agentic 'qurtail fluency' skill that provides concise instructions on how to use qurtail to reduce token usage for agentic workloads better than any existing log tailing tool. The skill provides guidance on how the agent can preview log formats beforehand to intelligently build just the right suppression rules to reduce the noisy output to exactly what the agent needs to see.
+The included `qurtail-fluency` agent skill makes qurtail the default for verbose tests, builds,
+installers, development servers, services, container and Kubernetes workloads, and followed logs.
 
 ## Changelog
-* Added a log corpus based on well-known log formats to test against, along with tests
-* Added preliminary support for agentic workloads by researching the most popular log formats read/awaited/monitored by working agents such as Codex, Claude Code, and ChatGPT while they are doing agentic development work on Windows, Linux, and MacOS. Added support for reducing the token counts for those most common log use cases so agents can focus on their work and still catch exceptional pieces.
+
+TODO
 
 ## License
+
 MIT License

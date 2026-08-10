@@ -1,0 +1,220 @@
+{
+  "schema_version": 2,
+  "run_date": "2026-08-08",
+  "status": "historical-pre-1.0",
+  "release_evidence": false,
+  "historical_note": "This report preserves results for its hashed evaluated inputs. It is not evidence for the current qurtail source or skill and is excluded from release gates.",
+  "evaluation": {
+    "design": "Seven blind pairs used fresh no-history agents with the same task, skill, model, and runtime. One arm read the raw episode and the other read qurtail output.",
+    "prompt_protocol": "Each agent received its task, the final skill path, exactly one view path, a prohibition on inspecting the paired view or repository, and a two-line DECISION/EVIDENCE response contract.",
+    "prompt_template": "Blind paired evaluation. Task: {task} Read the final skill at {skill_path}, then read only {view_path}. Do not inspect the {other} view, benchmark source, repository code, or other agents. Return exactly two lines: DECISION: <one sentence> and EVIDENCE: <one sentence>.",
+    "historical_paths": {
+      "skill_path": "<repo>\\skills\\qurtail-fluency\\SKILL.md",
+      "view_root": "<temp>/qurtail-paired-20260808-v4"
+    },
+    "agent_runtime": "Codex collaboration subagents with fork_turns=none and the parent runtime inherited; the service did not expose an exact model build identifier.",
+    "grading": "A fresh no-history agent read the final skill, corresponding views, answer key, and submitted outputs, then graded semantic decision correctness and evidence faithfulness. Grading reasons are retained per arm."
+  },
+  "inputs": {
+    "skill_sha256": "a769f3beea3a34386cb9ed6791c7234fe371f3aad2c853912d9f26357b4d30f5",
+    "episode_generator_sha256": "3f0caaebe0f0ed60be7b9aa3d8c1bf12051838aed4f3feac6879fcc10a6d1e95",
+    "qurtail_sha256": "85ab238a32445c1f3f7e186fa7a6303d1e6f6ceb1265964f5c00ef76065f6176"
+  },
+  "tokenizer": {
+    "package": "tiktoken 0.13.0",
+    "encoding": "o200k_base",
+    "scope": "Agent task prompt, final SKILL.md, and viewed log; platform framing excluded."
+  },
+  "summary": {
+    "raw_decisions_correct": 7,
+    "qurtail_decisions_correct": 7,
+    "raw_evidence_faithful": 7,
+    "qurtail_evidence_faithful": 7,
+    "median_total_input_token_reduction": 0.9675329151444131,
+    "total_raw_tokens": 90119,
+    "total_qurtail_tokens": 3372,
+    "gates": {
+      "qurtail_decisions_at_least_as_reliable_as_raw": true,
+      "median_total_input_token_reduction_at_least_75_percent": true,
+      "all_evidence_faithful": true
+    },
+    "passed": true
+  },
+  "episodes": [
+    {
+      "slug": "cache-refresh-failure",
+      "task": "Monitor cache refreshes and explain why the refresh stopped.",
+      "expected_decision": "Investigate the refused cache connection.",
+      "raw": {
+        "prompt_sha256": "6d6cc599eb860a1ddbdeb5e04730c3e55f00f6d32d776ae8d166e1f367224604",
+        "view_sha256": "0f9b33c260b3167f27da93f9e24918b0628e8e8aeeab577f7f2c99a1bc84d348",
+        "input_tokens": 14507,
+        "decision": "Cache refreshes stopped because the refresh process encountered a refused connection at 12:10:00Z.",
+        "evidence": "Successful one-second refreshes ran through 12:09:59Z (request_id=00000257), followed immediately by ERROR cache refresh failed: connection refused.",
+        "decision_correct": true,
+        "evidence_faithful": true,
+        "grade_reason": "The refused connection is identified as the cause, and the final successful refresh and following error are cited accurately."
+      },
+      "qurtail": {
+        "prompt_sha256": "e94c332a3aa8fbabcfc6410ee77144f87994f989db0dcc8537c7ee8fa21aa243",
+        "view_sha256": "362b394c4eaa0cef106dbd90fa5f656d9053c261ff0fcde31619bcced2d7e4fa",
+        "input_tokens": 471,
+        "decision": "Cache refreshes stopped because the target connection was refused at 12:10:00Z.",
+        "evidence": "The log shows 600 successful refreshes followed by ERROR cache refresh failed: connection refused.",
+        "decision_correct": true,
+        "evidence_faithful": true,
+        "grade_reason": "The exemplar plus 599 repetitions establishes 600 successes before the visible refusal."
+      }
+    },
+    {
+      "slug": "health-status-transition",
+      "task": "Monitor the health endpoint and decide whether it stayed available.",
+      "expected_decision": "Treat the 503 transition as an availability incident.",
+      "raw": {
+        "prompt_sha256": "c6a6b809657475b9d230fb3f8d5a2ca0e777b4ba19a3b9e85bd2e0d98e1ef668",
+        "view_sha256": "10f13b2342fca1ea859e5de8ff28d180fb57c53775a61cfca038d9e5578b3e5e",
+        "input_tokens": 23854,
+        "decision": "The health endpoint did not stay available; it became unavailable at 09:40:00.",
+        "evidence": "The raw log shows 600 consecutive HTTP 200 responses followed by one HTTP 503 response.",
+        "decision_correct": true,
+        "evidence_faithful": true,
+        "grade_reason": "The 503 is correctly treated as lost availability and the response sequence is accurate."
+      },
+      "qurtail": {
+        "prompt_sha256": "7fe585d50e1386b78e7d7bc479cd1119874ca1b00a45c22e38a5023bd56c8856",
+        "view_sha256": "7ee01869fc0aff737dadb4323ee6aeb9d1c6d0b2d0c6e8b8a8970d43ea7c95e3",
+        "input_tokens": 504,
+        "decision": "The health endpoint did not stay available.",
+        "evidence": "After 600 HTTP 200 responses, the 09:40:00 request returned HTTP 503.",
+        "decision_correct": true,
+        "evidence_faithful": true,
+        "grade_reason": "The compact sequence faithfully represents 600 successes followed by the visible 503."
+      }
+    },
+    {
+      "slug": "structured-permission-failure",
+      "task": "Monitor background synchronization and identify its failure detail.",
+      "expected_decision": "Fix the EACCES permission failure.",
+      "raw": {
+        "prompt_sha256": "5b43d4ff9472d5d03d50ce5d594f9e19bfcecb6aa7f5d3ecd4b7b3bd8a645497",
+        "view_sha256": "b6eefc89ca071a653ee982c666085083f48bc8cbeb5da51cd2cc40e393fec6ea",
+        "input_tokens": 21732,
+        "decision": "Background synchronization failed because access was denied.",
+        "evidence": "At time 600, worker-0 logged background sync failed for req-failure with EACCES permission denied.",
+        "decision_correct": true,
+        "evidence_faithful": true,
+        "grade_reason": "The access denial is correctly identified and every cited field appears in the error record."
+      },
+      "qurtail": {
+        "prompt_sha256": "ed63efa8d64b9155214983f0fa9f051df0d3dd4f34dc1aaafb46a049151f54fe",
+        "view_sha256": "020facc074cf24eaa59aa1ae65576c340912eefcde987fed3de3fb3b1fb64796",
+        "input_tokens": 508,
+        "decision": "Background synchronization failed because access was denied (EACCES).",
+        "evidence": "After 600 successful sync records, the final record reports background sync failed with permission denied.",
+        "decision_correct": true,
+        "evidence_faithful": true,
+        "grade_reason": "The EACCES failure and the preceding success count are both represented accurately."
+      }
+    },
+    {
+      "slug": "worker-traceback",
+      "task": "Monitor the worker crash, identify its cause, and decide what to do before restarting it.",
+      "expected_decision": "Free disk space before restarting the worker.",
+      "raw": {
+        "prompt_sha256": "f2b9ab4f3fcfdf3afd9a2d053c6819297e3798057ba36c34e97d14265dcd8c4f",
+        "view_sha256": "9aa3e907a0aac4cad6fccc065e0da8c44fc0058de60883ef4e3d4dde1ef24da5",
+        "input_tokens": 19325,
+        "decision": "Free disk space and verify cache writes succeed before restarting the worker.",
+        "evidence": "The traceback shows cache.write(payload) in worker.py:41 failed with OSError: disk full.",
+        "decision_correct": true,
+        "evidence_faithful": true,
+        "grade_reason": "The remediation and cited traceback details match the raw view."
+      },
+      "qurtail": {
+        "prompt_sha256": "8a78ebadd529c527ca07abc44e9cba4db1194e5f5b60abbd7dde301208c1befb",
+        "view_sha256": "b9fb61c204dafc5257d8d1b29f064b435f7b5d31103aa8351e01d4b275438942",
+        "input_tokens": 497,
+        "decision": "Free disk space on the worker's volume and verify sufficient capacity before restarting it.",
+        "evidence": "The traceback shows cache.write(payload) failed with OSError: disk full after 600 heartbeats.",
+        "decision_correct": true,
+        "evidence_faithful": true,
+        "grade_reason": "The disk-capacity remediation, traceback, and heartbeat count are represented accurately."
+      }
+    },
+    {
+      "slug": "resumed-pattern-after-incident",
+      "task": "Monitor worker heartbeats, identify the incident, and decide whether successful heartbeats resumed.",
+      "expected_decision": "Investigate the refused connection and note that heartbeats resumed.",
+      "raw": {
+        "prompt_sha256": "5a0591347777e4258e1ac2c4a26b9e6ec0d3a5495bc0713637a5553e918b7ff4",
+        "view_sha256": "af0ddd8c4d965790e61326e28c017ca238c512560d7f3e222ae15c8fe9267106",
+        "input_tokens": 9817,
+        "decision": "A heartbeat transport connection-refused incident occurred, and successful heartbeats resumed immediately afterward.",
+        "evidence": "The error appeared at 12:05:00Z, followed by 100 consecutive INFO heartbeats from 12:05:01Z through 12:06:40Z.",
+        "decision_correct": true,
+        "evidence_faithful": true,
+        "grade_reason": "The incident, recovery, timestamps, and 100 resumed heartbeats match the raw view."
+      },
+      "qurtail": {
+        "prompt_sha256": "d5c126d0fe7149640c36267d49c38c51c185f3428fe66c345b8bcb21901eaaf3",
+        "view_sha256": "482f5ab710a6369119c28e3c67f370bf8ba298eb6f9249024e280619bde4b140",
+        "input_tokens": 508,
+        "decision": "The incident was a refused heartbeat connection, and successful worker heartbeats resumed one second later.",
+        "evidence": "After the 12:05:00 connection-refused error, qurtail shows a 12:05:01 heartbeat exemplar followed by 99 similar records.",
+        "decision_correct": true,
+        "evidence_faithful": true,
+        "grade_reason": "The resumed exemplar plus 99 repetitions faithfully represents 100 resumed heartbeats."
+      }
+    },
+    {
+      "slug": "replication-lag-change",
+      "task": "Monitor replication lag and decide whether it is safe.",
+      "expected_decision": "Escalate the 900-second replication lag.",
+      "raw": {
+        "prompt_sha256": "a50f73c7198c097ba4faaac16c920c14970488295013f43a1101ea1ce559fc14",
+        "view_sha256": "94101f5e5ea0c870839a5149f86f5f1f1139e3f68260ca1a708f102b6d6e998a",
+        "input_tokens": 440,
+        "decision": "Replication lag is unsafe because it spiked to 900 seconds.",
+        "evidence": "The raw readings climbed from 1 second to 12 seconds and then 900 seconds.",
+        "decision_correct": true,
+        "evidence_faithful": true,
+        "grade_reason": "The unsafe conclusion and complete numeric progression match the raw view."
+      },
+      "qurtail": {
+        "prompt_sha256": "c06ff6afd9fa9219b8faa500580ba37b1193ba7f514f7e576a7c60156747f0a1",
+        "view_sha256": "94101f5e5ea0c870839a5149f86f5f1f1139e3f68260ca1a708f102b6d6e998a",
+        "input_tokens": 440,
+        "decision": "Replication lag is unsafe and requires immediate investigation.",
+        "evidence": "The reported lag climbed from 1 second to 12 seconds and then 900 seconds.",
+        "decision_correct": true,
+        "evidence_faithful": true,
+        "grade_reason": "The escalation decision and all three visible values are accurate."
+      }
+    },
+    {
+      "slug": "malformed-records",
+      "task": "Monitor an unfamiliar source without losing uncertain evidence.",
+      "expected_decision": "Inspect the raw source before adding a recognizer.",
+      "raw": {
+        "prompt_sha256": "760c60c3690802041e082a5ad8a687a7adb49f11491d33c6531f76474a94add9",
+        "view_sha256": "0c5804a0f82e0a1229dab834e2fa54486d28a9ab7e393dba3cf389a348c49ca3",
+        "input_tokens": 444,
+        "decision": "Escalate this stream for inspection because its malformed and unfamiliar records cannot be classified safely.",
+        "evidence": "The raw log contains two malformed request records, one indented ambiguous continuation, and distinct unknown values 17 and 18.",
+        "decision_correct": true,
+        "evidence_faithful": true,
+        "grade_reason": "The inspection decision and all five uncertain records match the raw view."
+      },
+      "qurtail": {
+        "prompt_sha256": "e5cf47007eef587fd722143886e4ada7a5d8b490b2d75a7f98aa816e9a88e17e",
+        "view_sha256": "0c5804a0f82e0a1229dab834e2fa54486d28a9ab7e393dba3cf389a348c49ca3",
+        "input_tokens": 444,
+        "decision": "Escalate this stream for inspection and preserve the raw records because multiple unfamiliar malformed shapes remain unresolved.",
+        "evidence": "The compact view shows two malformed request lines, an indented ambiguous continuation, and distinct unknown shape values 17 and 18.",
+        "decision_correct": true,
+        "evidence_faithful": true,
+        "grade_reason": "The inspection and preservation decision is supported by every visible uncertain record."
+      }
+    }
+  ]
+}
