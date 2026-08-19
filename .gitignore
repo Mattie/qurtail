@@ -26,3 +26,4 @@ benchmarks/corpus/local/
 
 # Workstation backup retained outside the release tree.
 README_old.md
+README_voice.md

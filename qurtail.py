@@ -114,6 +114,13 @@ _SIMPLE_NAMED_ID_MARKERS = (
     "traceparent=",
 )
 _ID_VALUE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/+\-]*")
+_AGGRESSIVE_PREFIXED_HEX = re.compile(
+    r"(?<![A-Za-z0-9_])0[xX][0-9A-Fa-f]+(?![A-Za-z0-9_])"
+)
+_AGGRESSIVE_INTEGER = re.compile(
+    r"(?<![A-Za-z0-9_.])[+-]?\d{4,}(?![A-Za-z0-9_.])"
+)
+_UNQUOTED_PATH_END = frozenset("\"'<>|,;()[]{}")
 _DIAGNOSTIC_START = re.compile(
     r"(?:Traceback \(most recent call last\):|Exception in thread|"
     r"^\s*(?:Caused by:|Suppressed:|panic:)|"
@@ -276,6 +283,97 @@ def _replace_single_named_id(text: str) -> tuple[str, bool]:
     return text, False
 
 
+def _absolute_path_kind(text: str, start: int) -> str | None:
+    """Identify a Unix, drive-letter, or UNC path at ``start``."""
+    if start < 0 or start >= len(text):
+        return None
+    if start and (
+        text[start - 1].isalnum() or text[start - 1] in "_./:\\"
+    ):
+        return None
+    if text[start] == "/" and not text.startswith("//", start):
+        return "unix"
+    if (
+        start + 2 < len(text)
+        and text[start].isascii()
+        and text[start].isalpha()
+        and text[start + 1] == ":"
+        and text[start + 2] in "/\\"
+    ):
+        return "drive"
+    if text.startswith("\\\\", start):
+        return "unc"
+    return None
+
+
+def _unc_path_has_share(path: str) -> bool:
+    """Require both a server and share in a UNC path candidate."""
+    remainder = path[2:]
+    separator = remainder.find("\\")
+    if separator < 1:
+        separator = remainder.find("/")
+    return separator >= 1 and separator + 1 < len(remainder)
+
+
+def _absolute_path_end(text: str, start: int, kind: str) -> int | None:
+    """Return the end of an absolute path without consuming log punctuation."""
+    quote = text[start - 1] if start and text[start - 1] in "\"'" else None
+    cursor = start
+    while cursor < len(text):
+        character = text[cursor]
+        if quote is not None:
+            if character == quote:
+                break
+        elif character.isspace() or character in _UNQUOTED_PATH_END:
+            break
+        cursor += 1
+    if cursor == start:
+        return None
+    if kind == "unc" and not _unc_path_has_share(text[start:cursor]):
+        return None
+    return cursor
+
+
+def _is_absolute_path(text: str) -> bool:
+    """Report whether a complete string has an aggressive absolute-path shape."""
+    kind = _absolute_path_kind(text, 0)
+    if kind is None:
+        return False
+    if kind == "unc":
+        return _unc_path_has_share(text)
+    return True
+
+
+def _replace_aggressive_paths(text: str) -> str:
+    """Replace absolute paths while retaining surrounding quotes and punctuation."""
+    pieces: list[str] = []
+    cursor = 0
+    search_from = 0
+    while search_from < len(text):
+        kind = _absolute_path_kind(text, search_from)
+        if kind is None:
+            search_from += 1
+            continue
+        end = _absolute_path_end(text, search_from, kind)
+        if end is None:
+            search_from += 1
+            continue
+        pieces.extend((text[cursor:search_from], "<path>"))
+        cursor = end
+        search_from = end
+    if not pieces:
+        return text
+    pieces.append(text[cursor:])
+    return "".join(pieces)
+
+
+def _aggressive_text_signature(text: str) -> str:
+    """Replace the broader values enabled by the aggressive CLI option."""
+    signature = _replace_aggressive_paths(text)
+    signature = _AGGRESSIVE_PREFIXED_HEX.sub("<hex>", signature)
+    return _AGGRESSIVE_INTEGER.sub("<integer>", signature)
+
+
 def _fast_text_signature(text: str) -> tuple[str, str, str] | None:
     """Build a compact signature for the common leading-ISO plus one-ID shape."""
     leading_iso = _LEADING_ISO_TIMESTAMP.match(text)
@@ -343,8 +441,8 @@ def _compile_fast_text_matcher(
     )
 
 
-def _text_signature(text: str) -> str:
-    """Replace only well-known volatile values in unstructured text."""
+def _text_signature(text: str, *, aggressive: bool = False) -> str:
+    """Replace conservative values and any explicitly enabled broad values."""
     leading_iso = _LEADING_ISO_TIMESTAMP.match(text)
     if leading_iso is not None:
         signature = "<timestamp>" + text[leading_iso.end():]
@@ -369,19 +467,25 @@ def _text_signature(text: str) -> str:
         or "iD" in signature
         or "traceparent" in signature.casefold()
     ):
-        return signature
+        return _aggressive_text_signature(signature) if aggressive else signature
 
     signature, replaced_single_id = _replace_single_named_id(signature)
     if replaced_single_id:
-        return signature
+        return _aggressive_text_signature(signature) if aggressive else signature
 
     def replace_id(match: re.Match[str]) -> str:
         return f"{match.group('id_key')}{match.group('id_separator')}<id>"
 
-    return _NAMED_ID.sub(replace_id, signature)
+    signature = _NAMED_ID.sub(replace_id, signature)
+    return _aggressive_text_signature(signature) if aggressive else signature
 
 
-def _stable_json(value: object, *, top_level: bool = False) -> object:
+def _stable_json(
+    value: object,
+    *,
+    top_level: bool = False,
+    aggressive: bool = False,
+) -> object:
     """Build a JSON value with standard volatile metadata replaced."""
     if isinstance(value, dict):
         stable: dict[str, object] = {}
@@ -392,16 +496,21 @@ def _stable_json(value: object, *, top_level: bool = False) -> object:
             elif top_level and normalized in _JSON_TOP_LEVEL_METADATA:
                 stable[str(key)] = "<metadata>"
             else:
-                stable[str(key)] = _stable_json(item)
+                stable[str(key)] = _stable_json(item, aggressive=aggressive)
         return stable
     if isinstance(value, list):
-        return [_stable_json(item) for item in value]
+        return [_stable_json(item, aggressive=aggressive) for item in value]
     if isinstance(value, str):
-        return _text_signature(value)
+        if aggressive and _is_absolute_path(value):
+            return "<path>"
+        return _text_signature(value, aggressive=aggressive)
+    if aggressive and isinstance(value, int) and not isinstance(value, bool):
+        if len(str(abs(value))) >= 4:
+            return "<integer>"
     return value
 
 
-def _signature(line: str) -> object | None:
+def _signature(line: str, *, aggressive: bool = False) -> object | None:
     """Return an indexed signature, or ``None`` when the record should stay visible."""
     if len(line) > MAX_SIGNATURE_CHARACTERS:
         return None
@@ -415,7 +524,11 @@ def _signature(line: str) -> object | None:
         if not isinstance(value, dict):
             return None
         try:
-            stable = _stable_json(value, top_level=True)
+            stable = _stable_json(
+                value,
+                top_level=True,
+                aggressive=aggressive,
+            )
             signature = "json:" + json.dumps(
                 stable,
                 ensure_ascii=False,
@@ -429,10 +542,11 @@ def _signature(line: str) -> object | None:
             )
         except RecursionError:
             return None
-    fast_signature = _fast_text_signature(line)
-    if fast_signature is not None:
-        return fast_signature
-    signature = "text:" + _text_signature(line)
+    if not aggressive:
+        fast_signature = _fast_text_signature(line)
+        if fast_signature is not None:
+            return fast_signature
+    signature = "text:" + _text_signature(line, aggressive=aggressive)
     return signature if len(signature) <= MAX_SIGNATURE_CHARACTERS else None
 
 
@@ -448,6 +562,7 @@ class _StreamReducer:
         pattern_limit: int = DEFAULT_PATTERN_LIMIT,
         clock: Callable[[], float] = time.monotonic,
         live_timer: bool = False,
+        aggressive: bool = False,
     ) -> None:
         if dot_every < 1:
             raise ValueError("dot_every must be at least 1")
@@ -462,6 +577,7 @@ class _StreamReducer:
         self._pattern_limit = pattern_limit
         self._clock = clock
         self._live_timer = live_timer
+        self._aggressive = aggressive
         self._patterns: OrderedDict[object, None] = OrderedDict()
         self._diagnostic_open = False
         self._first_record = True
@@ -643,7 +759,7 @@ class _StreamReducer:
             self._suppress(candidate, self._clock())
             return True
 
-        signature = _signature(printable)
+        signature = _signature(printable, aggressive=self._aggressive)
         if signature is not None and signature in self._patterns:
             if signature != self._recent_signature:
                 if self._run_signature is not None:
@@ -1083,6 +1199,7 @@ def _run_child_command(
     reducer: _StreamReducer,
     *,
     raw_log: Path | None = None,
+    overwrite_raw_log: bool = False,
 ) -> int:
     """Stream one child command through the reducer and return its exit status."""
     popen_options: dict[str, object]
@@ -1093,7 +1210,8 @@ def _run_child_command(
     else:
         popen_options = {"start_new_session": True}
 
-    raw_output = raw_log.open("wb") if raw_log is not None else None
+    raw_mode = "wb" if overwrite_raw_log else "xb"
+    raw_output = raw_log.open(raw_mode) if raw_log is not None else None
     process: subprocess.Popen[bytes] | None = None
     previous_sigterm: object | None = None
 
@@ -1155,8 +1273,8 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="qurtail",
         description="Follow logs while compacting conservative repeated patterns.",
         epilog=(
-            "Run a child command: qurtail run [--dot-every N] "
-            "[--raw-log PATH] -- COMMAND..."
+            "Run a child command: qurtail run [--aggressive] [--dot-every N] "
+            "[--raw-log PATH] [--overwrite] -- COMMAND..."
         ),
     )
     parser.add_argument("file", nargs="?", help="file to read; stdin when omitted")
@@ -1183,6 +1301,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="write one dot for every N suppressed records (default: %(default)s)",
     )
     parser.add_argument(
+        "--aggressive",
+        action="store_true",
+        help="also ignore prefixed hex, long integers, and absolute paths",
+    )
+    parser.add_argument(
         "--version",
         action="version",
         version=f"%(prog)s {__version__}",
@@ -1206,10 +1329,20 @@ def _build_run_parser() -> argparse.ArgumentParser:
         help="write one dot for every N suppressed records (default: %(default)s)",
     )
     parser.add_argument(
+        "--aggressive",
+        action="store_true",
+        help="also ignore prefixed hex, long integers, and absolute paths",
+    )
+    parser.add_argument(
         "--raw-log",
         type=Path,
         metavar="PATH",
-        help="write the child's exact combined output bytes to PATH",
+        help="write exact combined output bytes to a new PATH",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="allow --raw-log to replace an existing file",
     )
     parser.add_argument(
         "command",
@@ -1230,14 +1363,22 @@ def _run_mode(argv: list[str]) -> int:
         parser.error("a command is required after --")
     if args.dot_every < 1:
         parser.error("--dot-every must be at least 1")
+    if args.overwrite and args.raw_log is None:
+        parser.error("--overwrite requires --raw-log")
 
     reducer = _StreamReducer(
         sys.stdout,
         dot_every=args.dot_every,
         live_timer=True,
+        aggressive=args.aggressive,
     )
     try:
-        return _run_child_command(command, reducer, raw_log=args.raw_log)
+        return _run_child_command(
+            command,
+            reducer,
+            raw_log=args.raw_log,
+            overwrite_raw_log=args.overwrite,
+        )
     except OSError as error:
         parser.exit(1, f"qurtail: {error}\n")
     finally:
@@ -1263,6 +1404,7 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout,
         dot_every=args.dot_every,
         live_timer=True,
+        aggressive=args.aggressive,
     )
     try:
         if args.file:

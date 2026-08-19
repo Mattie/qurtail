@@ -1,12 +1,10 @@
-# qurtail to Quell Unwanted Repetition
+# qurtail can Quell Unwanted Repetition
 
 Long-running logs have a bad habit of saying the same thing thousands of times with a new
 timestamp attached. That is tolerable when you're watching a terminal. It gets expensive and
 fairly useless when a coding agent has to read the whole thing.
 
-`qurtail` gives the agent a smaller view of the stream. It prints the first example of a repeated
-pattern, shows dots while more copies arrive, and closes the run with an exact count. Warnings,
-errors, status changes, unfamiliar numbers, and multiline diagnostics stay visible.
+`qurtail` gives you or your agent a smaller view of the stream. It prints the first example of a repeated pattern, shows dots while more copies arrive, and closes the run with an exact count. Warnings, errors, status changes, unfamiliar numbers, and multiline diagnostics stay visible.
 
 ```text
 > qurtail -F -n 50 app.log
@@ -16,30 +14,40 @@ errors, status changes, unfamiliar numbers, and multiline diagnostics stay visib
 ..... [5 similar before stop]
 ```
 
-A silent monitor is hard to distinguish from a stuck one. Qurtail leaves the dots as a small sign
-of life while keeping the output manageable.
+A silent monitor is hard to distinguish from a stuck one. Qurtail provides the dots by default as a small sign of life, but you can change that with `--dot-every`.
 
 ## Install it
 
 Qurtail requires Python 3.11 or newer. It has no runtime dependencies.
 
-You can run it once with `uvx`:
 
-```bash
-uvx qurtail -F -n 50 app.log
-```
-
-Or install it as a command:
-
+To install from PyPI:
 ```bash
 uv tool install qurtail
-```
-
-```bash
+# or
 pipx install qurtail
 ```
 
-## Follow a file
+To install from GitHub:
+```bash
+git clone https://github.com/Mattie/qurtail.git
+cd qurtail
+uv tool install .
+```
+
+Or use `pipx` after cloning:
+
+```bash
+pipx install .
+```
+
+To run the repository once without installing it:
+
+```bash
+uvx --from . qurtail -F -n 50 app.log
+```
+
+## Follow along!
 
 ```bash
 qurtail -F -n 50 app.log
@@ -134,41 +142,43 @@ Every suppressed record increments the count for its visible pattern. Suppressed
 teach the matcher new patterns, so a hidden record cannot become the hidden example that makes some
 later line disappear.
 
-## Keep the raw output when you'll need it
+### Optional aggressive matching
 
-Qurtail is a viewing tool. The followed file, captured raw output, or upstream stream remains the
-source of truth.
+Conservative matching remains the default. When changing values still make repetitive output look
+unique, `--aggressive` also treats these hexadecimal, path, and long-integer values as noise.
 
-When qurtail runs the child command, `--raw-log` keeps a raw transcript:
+Keep in mind that sometimes ports, years, durations, byte counts, identifiers, and affected paths can all matter. Only use `--aggressive` when those values are noise.
+
+## Keep the raw output if you'll need it
+
+Qurtail is just a viewing helper to reduce noise. You may still want the followed stream captured.
+
+When qurtail runs the child command, use `--raw-log` to keep the raw text:
 
 ```bash
 qurtail run --raw-log api.raw.log -- docker logs -f api
 ```
 
-For a pipeline, keep the raw copy before the stream reaches qurtail:
+(The raw-log path must be new. To deliberately replace an existing log, add `--overwrite`.)
+
+For a pipe, keep the raw copy before the stream reaches qurtail:
 
 ```bash
 docker logs -f api 2>&1 | tee api.raw.log | qurtail
 ```
 
-Without `--raw-log`, qurtail doesn't create a transcript or keep a second copy. If your conclusion
-depends on one of the values that was summarized, check the original file or the captured raw log.
-The compact view tells you what repeated and how often. It cannot recover bytes you chose not to
-save.
+Without `--raw-log`, qurtail doesn't create a transcript or keep a second copy.
 
 ## What qurtail doesn't do
 
-Qurtail compacts a live local stream while it passes through. It doesn't store logs unless you ask
-for raw capture, query history, diagnose failures, manage remote sources, alert people, send
-telemetry, call a model, or provide an observability service. The common path requires no project
-configuration.
+Qurtail compacts a live local stream while it passes through. It doesn't store logs unless you ask.
 
 ## Benchmarks and tests
 
 The benchmark suite includes regression fixtures, held-out monitoring episodes, and large-corpus
 runs. Installed-command smoke tests run on Linux, macOS, and Windows.
 
-See [`benchmarks/README.md`](benchmarks/README.md) for more.
+See [`benchmarks/README.md`](benchmarks/README.md) for more. If you have good log data you want to share, please open an issue or pull request. The more diverse the corpus, the better qurtail can be updated to recognize repetition.
 
 ## Agent skill
 
@@ -177,8 +187,14 @@ installers, development servers, services, container and Kubernetes workloads, a
 
 ## Changelog
 
-TODO
+### 1.0.0
+
+- Added opt-in aggressive matching for long integers, prefixed hexadecimal values, and absolute
+  paths.
+- Protected existing raw transcripts by default and added an explicit overwrite option.
+- Kept corpus-integrity verification byte-exact across Linux, macOS, and Windows.
+- Included the complete MIT license in source and built distributions.
 
 ## License
 
-MIT License
+[MIT License](LICENSE.md)

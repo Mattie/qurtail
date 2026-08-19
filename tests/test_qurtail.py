@@ -98,9 +98,59 @@ class StreamReducerTests(unittest.TestCase):
             "worker 18 finished batch 42",
         ]
 
-        output, _ = self.run_stream(lines)
+        for aggressive in (False, True):
+            with self.subTest(aggressive=aggressive):
+                output, _ = self.run_stream(lines, aggressive=aggressive)
 
-        self.assertEqual(output, "".join(line + "\n" for line in lines))
+                self.assertEqual(output, "".join(line + "\n" for line in lines))
+
+    def test_aggressive_matching_normalizes_the_documented_text_values(self) -> None:
+        first = (
+            r'WARN latency_ms=1200 address=0x1a file=/srv/a '
+            r'windows="C:\Program Files\app.log" '
+            r'unc=\\server-a\share\app.log'
+        )
+        repeat = (
+            r'WARN latency_ms=9000 address=0X2B file=/opt/b '
+            r'windows="D:\Other Files\worker.log" '
+            r'unc=\\server-b\logs\worker.log'
+        )
+
+        conservative, _ = self.run_stream([first, repeat])
+        aggressive, _ = self.run_stream([first, repeat], aggressive=True)
+
+        self.assertEqual(conservative, first + "\n" + repeat + "\n")
+        self.assertEqual(
+            aggressive,
+            first + "\n. [1 similar before stop]\n",
+        )
+
+    def test_aggressive_matching_keeps_small_integers_and_relative_values(self) -> None:
+        first = "worker=123 hash=deadbeef file=var/log/a"
+        changed = "worker=124 hash=feedface file=var/log/b"
+
+        output, _ = self.run_stream([first, changed], aggressive=True)
+
+        self.assertEqual(output, first + "\n" + changed + "\n")
+
+    def test_aggressive_matching_normalizes_values_inside_json(self) -> None:
+        first = (
+            '{"duration":1200,"address":"0x1a","file":"/srv/a",'
+            '"nested":{"path":"C:\\\\Program Files\\\\app.log"}}'
+        )
+        repeat = (
+            '{"duration":9000,"address":"0X2B","file":"/opt/b",'
+            '"nested":{"path":"D:\\\\Other Files\\\\worker.log"}}'
+        )
+
+        conservative, _ = self.run_stream([first, repeat])
+        aggressive, _ = self.run_stream([first, repeat], aggressive=True)
+
+        self.assertEqual(conservative, first + "\n" + repeat + "\n")
+        self.assertEqual(
+            aggressive,
+            first + "\n. [1 similar before stop]\n",
+        )
 
     def test_container_prefixes_and_timestamps_keep_the_payload_pattern(self) -> None:
         first = (
@@ -217,9 +267,11 @@ class StreamReducerTests(unittest.TestCase):
             "2026-08-08T12:01:00Z INFO worker recovered",
         ]
 
-        output, _ = self.run_stream(lines)
+        for aggressive in (False, True):
+            with self.subTest(aggressive=aggressive):
+                output, _ = self.run_stream(lines, aggressive=aggressive)
 
-        self.assertEqual(output, "".join(line + "\n" for line in lines))
+                self.assertEqual(output, "".join(line + "\n" for line in lines))
 
     def test_suppressed_records_do_not_extend_the_pattern_index(self) -> None:
         output, reducer = self.run_stream(
@@ -421,6 +473,123 @@ class StreamReducerTests(unittest.TestCase):
         )
 
 
+class LiveCommandTests(unittest.TestCase):
+    """Exercise qurtail's public CLI across real, still-open pipes."""
+
+    @staticmethod
+    def start_qurtail(*arguments: str) -> subprocess.Popen[str]:
+        """Start the repository command with controllable standard input."""
+        return subprocess.Popen(
+            [sys.executable, str(Path(qurtail.__file__).resolve()), *arguments],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+
+    @staticmethod
+    def finish_process(process: subprocess.Popen[str]) -> tuple[int, str]:
+        """Close every pipe and ensure the process cannot outlive its test."""
+        if process.stdin is not None and not process.stdin.closed:
+            process.stdin.close()
+        try:
+            return_code = process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.terminate()
+            try:
+                return_code = process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                return_code = process.wait(timeout=10)
+
+        stderr = process.stderr.read() if process.stderr is not None else ""
+        if process.stdout is not None:
+            process.stdout.close()
+        if process.stderr is not None:
+            process.stderr.close()
+        return return_code, stderr
+
+    def read_live_line(
+        self,
+        process: subprocess.Popen[str],
+        *,
+        timeout: float = 5.0,
+    ) -> str:
+        """Read one output line without closing stdin to manufacture an EOF."""
+        assert process.stdout is not None
+        outcome: dict[str, object] = {}
+        finished = threading.Event()
+
+        def read_line() -> None:
+            try:
+                outcome["line"] = process.stdout.readline()
+            except BaseException as error:
+                outcome["error"] = error
+            finally:
+                finished.set()
+
+        reader = threading.Thread(target=read_line, daemon=True)
+        reader.start()
+        if not finished.wait(timeout):
+            _, stderr = self.finish_process(process)
+            reader.join(timeout=1)
+            self.fail(
+                "qurtail emitted no complete line while stdin remained open; "
+                f"stderr={stderr!r}"
+            )
+        reader.join(timeout=1)
+        if "error" in outcome:
+            raise outcome["error"]  # type: ignore[misc]
+        return str(outcome["line"])
+
+    def test_stdin_emits_the_first_record_before_eof(self) -> None:
+        process = self.start_qurtail()
+        return_code: int | None = None
+        stderr = ""
+        try:
+            assert process.stdin is not None
+            process.stdin.write("INFO live input ready\n")
+            process.stdin.flush()
+
+            self.assertEqual(
+                self.read_live_line(process),
+                "INFO live input ready\n",
+            )
+            self.assertIsNone(process.poll(), "qurtail should still be reading stdin")
+        finally:
+            return_code, stderr = self.finish_process(process)
+
+        self.assertEqual(return_code, 0, stderr)
+
+    def test_run_emits_child_output_before_the_child_exits(self) -> None:
+        child_script = (
+            "import sys; "
+            "print('INFO live child ready', flush=True); "
+            "sys.stdin.read()"
+        )
+        process = self.start_qurtail(
+            "run",
+            "--",
+            sys.executable,
+            "-c",
+            child_script,
+        )
+        return_code: int | None = None
+        stderr = ""
+        try:
+            self.assertEqual(
+                self.read_live_line(process),
+                "INFO live child ready\n",
+            )
+            self.assertIsNone(process.poll(), "the child should still be running")
+        finally:
+            return_code, stderr = self.finish_process(process)
+
+        self.assertEqual(return_code, 0, stderr)
+
+
 class CommandTests(unittest.TestCase):
     """Verify the small 1.0 command surface and tail behavior."""
 
@@ -479,6 +648,30 @@ class CommandTests(unittest.TestCase):
             "one\n. [1 similar in 0s]\ntwo\n",
         )
 
+    def test_aggressive_option_applies_to_file_and_stdin_input(self) -> None:
+        first = "WARN latency_ms=1200 file=/srv/a"
+        repeat = "WARN latency_ms=9000 file=/srv/b"
+        expected = first + "\n. [1 similar before stop]\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "app.log"
+            path.write_text(first + "\n" + repeat + "\n", encoding="utf-8")
+            file_output = StringIO()
+
+            with patch.object(sys, "stdout", file_output):
+                file_status = main(["--aggressive", str(path)])
+
+        stdin_output = StringIO()
+        with (
+            patch.object(sys, "stdin", StringIO(first + "\n" + repeat + "\n")),
+            patch.object(sys, "stdout", stdin_output),
+        ):
+            stdin_status = main(["--aggressive"])
+
+        self.assertEqual(file_status, 0)
+        self.assertEqual(stdin_status, 0)
+        self.assertEqual(file_output.getvalue(), expected)
+        self.assertEqual(stdin_output.getvalue(), expected)
+
     def test_runner_compacts_combined_output_captures_raw_bytes_and_returns_status(
         self,
     ) -> None:
@@ -511,6 +704,89 @@ class CommandTests(unittest.TestCase):
         self.assertEqual(output.getvalue(), "heartbeat\n. [1 similar before stop]\n")
         self.assertEqual(raw_bytes, b"heartbeat\nheartbeat\n")
 
+    def test_runner_aggressive_matching_keeps_the_raw_transcript_exact(self) -> None:
+        first = b"WARN latency_ms=1200 file=/srv/a\n"
+        repeat = b"WARN latency_ms=9000 file=/srv/b\n"
+        script = (
+            "import os; "
+            f"os.write(1, {first!r}); "
+            f"os.write(2, {repeat!r})"
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            raw_log = Path(temporary) / "child.raw.log"
+            output = StringIO()
+
+            with patch.object(sys, "stdout", output):
+                status = main(
+                    [
+                        "run",
+                        "--aggressive",
+                        "--raw-log",
+                        str(raw_log),
+                        "--",
+                        sys.executable,
+                        "-c",
+                        script,
+                    ]
+                )
+
+            raw_bytes = raw_log.read_bytes()
+
+        self.assertEqual(status, 0)
+        self.assertEqual(
+            output.getvalue(),
+            first.decode() + ". [1 similar before stop]\n",
+        )
+        self.assertEqual(raw_bytes, first + repeat)
+
+    def test_runner_protects_existing_raw_logs_unless_overwrite_is_explicit(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            raw_log = Path(temporary) / "child.raw.log"
+            raw_log.write_bytes(b"existing transcript\n")
+            errors = StringIO()
+
+            with self.assertRaises(SystemExit) as raised:
+                with redirect_stderr(errors):
+                    main(
+                        [
+                            "run",
+                            "--raw-log",
+                            str(raw_log),
+                            "--",
+                            sys.executable,
+                            "-c",
+                            "print('replacement')",
+                        ]
+                    )
+
+            self.assertEqual(raised.exception.code, 1)
+            self.assertEqual(raw_log.read_bytes(), b"existing transcript\n")
+            self.assertIn("child.raw.log", errors.getvalue())
+
+            output = StringIO()
+            with patch.object(sys, "stdout", output):
+                status = main(
+                    [
+                        "run",
+                        "--overwrite",
+                        "--raw-log",
+                        str(raw_log),
+                        "--",
+                        sys.executable,
+                        "-c",
+                        "print('replacement')",
+                    ]
+                )
+
+            self.assertEqual(status, 0)
+            self.assertEqual(output.getvalue(), "replacement\n")
+            self.assertEqual(
+                raw_log.read_bytes(),
+                f"replacement{os.linesep}".encode(),
+            )
+
     def test_runner_passes_arguments_without_shell_interpretation(self) -> None:
         script = "import json, sys; print(json.dumps(sys.argv[1:]))"
         output = StringIO()
@@ -540,6 +816,34 @@ class CommandTests(unittest.TestCase):
 
         self.assertEqual(raised.exception.code, 2)
         self.assertIn("a command is required after --", errors.getvalue())
+
+    def test_runner_overwrite_requires_a_raw_log(self) -> None:
+        errors = StringIO()
+
+        with self.assertRaises(SystemExit) as raised:
+            with redirect_stderr(errors):
+                main(["run", "--overwrite", "--", sys.executable])
+
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn("--overwrite requires --raw-log", errors.getvalue())
+
+    def test_runner_rejects_the_undocumented_overwrite_name(self) -> None:
+        errors = StringIO()
+
+        with self.assertRaises(SystemExit) as raised:
+            with redirect_stderr(errors):
+                main(
+                    [
+                        "run",
+                        "--overwrite-raw-log",
+                        "--",
+                        sys.executable,
+                    ]
+                )
+
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn("unrecognized arguments", errors.getvalue())
+        self.assertIn("--overwrite-raw-log", errors.getvalue())
 
     def test_interrupt_forwarding_reaps_the_child_and_maps_signal_status(self) -> None:
         class FakeProcess:
@@ -811,6 +1115,21 @@ while True:
                 self.assertEqual(follow.call_args.args[0], Path("app.log"))
                 self.assertEqual(follow.call_args.args[1], 50)
 
+    def test_aggressive_option_reaches_the_file_follower(self) -> None:
+        output = StringIO()
+        with (
+            patch.object(sys, "stdout", output),
+            patch(
+                "qurtail._follow_file",
+                side_effect=KeyboardInterrupt,
+            ) as follow,
+        ):
+            status = main(["--aggressive", "-F", "app.log"])
+
+        self.assertEqual(status, 0)
+        reducer = follow.call_args.args[2]
+        self.assertTrue(reducer._aggressive)
+
     def test_file_follower_handles_append_truncation_and_replacement(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "app.log"
@@ -971,8 +1290,18 @@ while True:
 
         self.assertEqual(raised.exception.code, 0)
         help_text = output.getvalue()
-        for option in ("-f", "-F", "-n", "--dot-every", "qurtail run", "--raw-log"):
+        for option in (
+            "-f",
+            "-F",
+            "-n",
+            "--dot-every",
+            "--aggressive",
+            "qurtail run",
+            "--raw-log",
+            "--overwrite",
+        ):
             self.assertIn(option, help_text)
+        self.assertNotIn("--overwrite-raw-log", help_text)
         for removed in ("--similarity", "--history", "--config", "--mode"):
             self.assertNotIn(removed, help_text)
 

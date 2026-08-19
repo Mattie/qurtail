@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "Follow logs while compacting conservative repeated patterns"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
+license = { file = "LICENSE.md" }
 
 [project.scripts]
 qurtail = "qurtail:main"

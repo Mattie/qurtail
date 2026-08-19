@@ -167,7 +167,7 @@ class LargeCorpusFilesystemTests(unittest.TestCase):
                 )
 
             events = extracted / "fixture" / "events.log"
-            events.write_text("one\ntwo\nother\n", encoding="utf-8")
+            events.write_bytes(b"one\ntwo\nother\n")
             with self.assertRaisesRegex(CorpusError, "hash changed"):
                 verify_index_record(root, record)
             with self.assertRaisesRegex(CorpusError, "extracted files changed"):

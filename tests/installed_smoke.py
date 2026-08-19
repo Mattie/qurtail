@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 from importlib.metadata import distribution
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -59,6 +60,33 @@ def main() -> int:
             raise SystemExit(f"unexpected runner output: {runner.stdout!r}")
         if raw_log.read_bytes() != b"heartbeat\nheartbeat\n":
             raise SystemExit("runner raw log did not preserve combined child output")
+
+        replacement = subprocess.run(
+            [
+                "qurtail",
+                "run",
+                "--overwrite",
+                "--raw-log",
+                str(raw_log),
+                "--",
+                sys.executable,
+                "-c",
+                "print('replacement')",
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if replacement.returncode != 0:
+            raise SystemExit(
+                f"overwrite runner returned {replacement.returncode}; expected 0"
+            )
+        if replacement.stdout != "replacement\n":
+            raise SystemExit(
+                f"unexpected overwrite output: {replacement.stdout!r}"
+            )
+        if raw_log.read_bytes() != f"replacement{os.linesep}".encode():
+            raise SystemExit("--overwrite did not replace the existing raw log")
 
     print("installed qurtail stdin and runner smoke passed")
     return 0
