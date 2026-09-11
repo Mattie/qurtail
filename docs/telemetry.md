@@ -44,6 +44,8 @@ Paths and arguments use JSON string escaping inside the plain-text record, which
 
 Telemetry is best effort. It never changes qurtail's stdout, stderr, exit status, or primary work. A writer waits no longer than 250 ms for another qurtail process to release `commands.lock`; if the deadline expires, that event is skipped.
 
+Ctrl+C during telemetry startup cancels the invocation with exit status 130 before the child command starts. An interrupt during FINISH logging preserves the command's already-determined exit status.
+
 Rotation happens before an event when the active file is already at or above `max_file_bytes`. Each event is appended as one complete buffer, so an individual record is never divided between files. A large record can take the active file beyond the target until the next event. Every event also removes archives outside the current `max_files` setting.
 
 On Unix, qurtail restricts the telemetry directory to mode `0700` and its files to `0600`. Windows uses the access-control list inherited from the user's profile.

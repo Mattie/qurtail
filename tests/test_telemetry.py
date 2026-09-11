@@ -303,6 +303,16 @@ class RecordAndLifecycleTests(TelemetryTestCase):
         self.assertEqual(len(self.log_lines()), 1)
         self.assertIsNotNone(START_RECORD.fullmatch(self.log_lines()[0]))
 
+    def test_startup_interrupt_cancels_before_launching_the_child(self) -> None:
+        self.write_config()
+        marker = self.home / "child-started"
+        child = f"from pathlib import Path; Path({str(marker)!r}).touch()"
+        with patch("_qurtail_telemetry._try_lock", side_effect=KeyboardInterrupt):
+            status = qurtail.main(["run", "--", sys.executable, "-c", child])
+        self.assertEqual(status, 130)
+        self.assertFalse(marker.exists())
+        self.assertFalse((self.home / ".qurtail/telemetry/commands.log").exists())
+
 
 class StorageTests(TelemetryTestCase):
     """Verify rotation, retention, locking, and platform permissions."""

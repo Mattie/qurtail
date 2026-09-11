@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
-  "qurtail_sha256": "8fbaff346c1814e22638ebb85b1e308e769fc3d419311203c88e067be1c6fd34",
+  "qurtail_sha256": "c7f05454d25d54626dd1eb25627a0c8fce2432781b84d58ec121ae544b4ec45b",
   "evaluator_sha256": {
     "benchmarks/run_interleaved.py": "90032151f9a958e048e1f3d66b50b4cae192fa7aca825faccb704b6447943672",
-    "benchmarks/run_large_corpus.py": "99084885ffe64ebb81cf499f6cc27f9e8ffd4d844624a2de6d3efd9abedbcd0c",
+    "benchmarks/run_large_corpus.py": "dff1e60faae5a5ee98535fe63d2a131811d8f0a253e83147e4640fd6fe7aeba0",
     "benchmarks/large_corpus.py": "c9cf32d99dd8414f61f829cfbe8eaacb8cc2929c458ff28939f6e0515c26043f"
   },
   "manifest_sha256": "30c4f6708ab0292976afe3ac9aa5aa849aef8974f27321c7b1b994a23349fab4",
@@ -37,7 +37,7 @@
               "output_tokens": 1697780,
               "token_reduction": 0.579767723513706,
               "all_occurrences_accounted_for": true,
-              "elapsed_seconds": 2.197076669021044
+              "elapsed_seconds": 2.510545829019975
             },
             "baseline": {
               "records": 74380,
@@ -50,7 +50,7 @@
               "output_tokens": 4023352,
               "token_reduction": 0.004145195451893624,
               "all_occurrences_accounted_for": true,
-              "elapsed_seconds": 2.7798701070132665
+              "elapsed_seconds": 2.833449002006091
             }
           }
         }
@@ -75,7 +75,7 @@
               "output_tokens": 818719,
               "token_reduction": 0.09397257302719242,
               "all_occurrences_accounted_for": true,
-              "elapsed_seconds": 0.8418747690157034
+              "elapsed_seconds": 0.7150686239474453
             },
             "baseline": {
               "records": 25567,
@@ -88,7 +88,7 @@
               "output_tokens": 903194,
               "token_reduction": 0.000489135005688146,
               "all_occurrences_accounted_for": true,
-              "elapsed_seconds": 0.6955769939813763
+              "elapsed_seconds": 0.7226794990128838
             }
           }
         }
@@ -113,7 +113,7 @@
               "output_tokens": 27620516,
               "token_reduction": 0.013165702782424127,
               "all_occurrences_accounted_for": true,
-              "elapsed_seconds": 26.173711770039517
+              "elapsed_seconds": 28.940139151003677
             },
             "baseline": {
               "records": 655147,
@@ -126,7 +126,7 @@
               "output_tokens": 27987832,
               "token_reduction": 4.212367489508928e-05,
               "all_occurrences_accounted_for": true,
-              "elapsed_seconds": 28.121140297036618
+              "elapsed_seconds": 25.474716680997517
             }
           }
         }

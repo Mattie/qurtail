@@ -162,7 +162,7 @@ def signal_checks(labels: dict, raw_surface: str, resolved_surface: str,
                                      and not s["primary_present_resolved"] for s in signals),
         "primary_absent_from_raw": sum(not s["primary_present_raw"] for s in signals),
         "valid_annotated_span_records": len(span_lines),
-        "span_records_individually_visible_or_referenced": sum(visible[i] for i in span_lines),
+        "span_records_individually_visible": sum(visible[i] for i in span_lines),
         "invalid_annotated_spans": invalid,
     }
 

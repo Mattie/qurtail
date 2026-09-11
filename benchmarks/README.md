@@ -31,8 +31,9 @@ Corpus tokens use `tiktoken 0.13.0` / `o200k_base`, summed per complete logical 
 All three corpora shrank in aggregate. A short stream can still grow because of its closing
 count: `A, B, A, B` is eight raw bytes and 31 output bytes with the default dot density.
 
-All six agent runs correctly identified the requested peers, backoff, recovery, and final
-request ID. Whole-file task/evidence token counts include every ledger-verified read:
+All six agent runs matched the answer keys for the requested peers, backoff, recovery, and final
+request ID. Supporting evidence was checked manually; the scorer checks read integrity and
+answer-key equality. Whole-file task/evidence token counts include every ledger-verified read:
 
 | Fixed task | Raw tokens | Compact tokens | Compact change |
 | --- | ---: | ---: | ---: |
@@ -49,9 +50,9 @@ reasoning/output, and launcher instructions. This small evaluation supports corr
 with raw recovery; it does not establish aggregate agent token savings.
 
 The full 11,175,629-record HDFS replay retained all 16,838 available anomaly units and took
-162.3 seconds including baseline scans. Held-out monitoring gates passed in their recorded
+149.3 seconds including baseline scans. Held-out monitoring gates passed in their recorded
 modes with zero nonrepetitive token inflation. The recovery episode needs `--no-interleaving`;
-its default-mode visibility failure is retained explicitly. All 145 tests passed on Linux;
+its default-mode visibility failure is retained explicitly. All 148 tests passed on Linux;
 Windows ran the same suite with four POSIX skips and two optional-tokenizer skips.
 Installed-command smoke checks for both modes and performance gates passed on both platforms.
 macOS remains unverified locally; the existing CI matrix includes it.

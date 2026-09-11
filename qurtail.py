@@ -582,7 +582,7 @@ class _StreamReducer:
         self._live_timer = live_timer
         self._aggressive = aggressive
         self._interleaving = interleaving
-        self._patterns: OrderedDict[object, None] = OrderedDict()
+        self._patterns: OrderedDict[object, tuple[re.Pattern[str], str] | None] = OrderedDict()
         self._diagnostic_open = False
         self._first_record = True
         self._recent_signature: object | None = None
@@ -744,7 +744,12 @@ class _StreamReducer:
         candidate = self._recent_signature
         if candidate is not self._fast_matcher_signature:
             self._fast_matcher_signature = candidate
-            self._fast_matcher = _compile_fast_text_matcher(candidate)
+            # Reuse matchers across alternating patterns; normal eviction bounds them.
+            self._fast_matcher = self._patterns.get(candidate)
+            if self._fast_matcher is None:
+                self._fast_matcher = _compile_fast_text_matcher(candidate)
+                if self._fast_matcher is not None and candidate in self._patterns:
+                    self._patterns[candidate] = self._fast_matcher
         fast_match = None
         if self._fast_matcher is not None:
             matcher, suffix = self._fast_matcher
@@ -1448,7 +1453,10 @@ def main(argv: list[str] | None = None) -> int:
     """Run the qurtail command and return its process exit status."""
     arguments = list(sys.argv[1:] if argv is None else argv)
     recorded_argv = list(sys.argv) if argv is None else ["qurtail", *arguments]
-    telemetry = start_session(recorded_argv, __version__)
+    try:
+        telemetry = start_session(recorded_argv, __version__)
+    except KeyboardInterrupt:
+        return 130
     try:
         status = _main(arguments)
     except SystemExit as exit_error:

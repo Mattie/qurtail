@@ -50,7 +50,7 @@ def score(cases_root: Path, receipts_path: Path) -> dict:
                           "tokens": len(encoding.encode(data.decode("utf-8"), disallowed_special=()))})
         results.append({**receipt, "view": arm["view"], "reads": reads,
                         "task_and_evidence_tokens": sum(read["tokens"] for read in reads),
-                        "passed": receipt["answers"] == case["expected"]})
+                        "answers_match": receipt["answers"] == case["expected"]})
     if seen != expected_pairs:
         raise ValueError("missing case/arm receipt")
     totals = {view: sum(result["task_and_evidence_tokens"] for result in results
@@ -58,6 +58,7 @@ def score(cases_root: Path, receipts_path: Path) -> dict:
     return {
         "schema_version": 1,
         "protocol": receipt_data["protocol"],
+        "grading_scope": "Verified complete reads and answer-key equality. Evidence grounding is reviewed manually.",
         "fixture_manifest": manifest,
         "receipts_sha256": hashlib.sha256(receipts_path.read_bytes()).hexdigest(),
         "scorer_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
@@ -67,7 +68,7 @@ def score(cases_root: Path, receipts_path: Path) -> dict:
         "results": results,
         "total_task_and_evidence_tokens": totals,
         "aggregate_token_reduction": 1 - totals["compact"] / totals["raw"],
-        "passed": all(result["passed"] for result in results),
+        "passed": all(result["answers_match"] for result in results),
     }
 
 

@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "date": "2026-09-11",
-  "qurtail_sha256": "8fbaff346c1814e22638ebb85b1e308e769fc3d419311203c88e067be1c6fd34",
+  "qurtail_sha256": "c7f05454d25d54626dd1eb25627a0c8fce2432781b84d58ec121ae544b4ec45b",
   "platforms": {
     "linux": {
       "environment": "Ubuntu under WSL, project Python 3.12 environment",
-      "tests_run": 145,
+      "tests_run": 148,
       "tests_skipped": 0,
       "tests_passed": true,
       "installed_smoke_passed": true,
@@ -22,40 +22,40 @@
         "timing_trials": 3,
         "timing_samples": [
           {
-            "framing_seconds": 0.14367099601076916,
-            "framing_cpu_seconds": 0.1596263,
-            "qurtail_seconds": 0.6594521700171754,
-            "qurtail_cpu_seconds": 0.7327025,
-            "framing_cpu_ratio": 4.590111403947846,
-            "first_record_seconds": 4.981399979442358E-05
+            "framing_seconds": 0.1586017010267824,
+            "framing_cpu_seconds": 0.1762148,
+            "qurtail_seconds": 0.8171177839976735,
+            "qurtail_cpu_seconds": 0.9079025999999999,
+            "framing_cpu_ratio": 5.152249413783632,
+            "first_record_seconds": 5.766196409240365e-05
           },
           {
-            "framing_seconds": 0.1406142699997872,
-            "framing_cpu_seconds": 0.15622979999999975,
-            "qurtail_seconds": 0.6138827179966029,
-            "qurtail_cpu_seconds": 0.6820788999999998,
-            "framing_cpu_ratio": 4.365869379593399,
-            "first_record_seconds": 4.705099854618311E-05
+            "framing_seconds": 0.14256480400217697,
+            "framing_cpu_seconds": 0.15840470000000018,
+            "qurtail_seconds": 0.6859472399810329,
+            "qurtail_cpu_seconds": 0.7621584000000001,
+            "framing_cpu_ratio": 4.811463296227949,
+            "first_record_seconds": 4.641298437491059e-05
           },
           {
-            "framing_seconds": 0.13206093601183966,
-            "framing_cpu_seconds": 0.1467345,
-            "qurtail_seconds": 0.5729349489847664,
-            "qurtail_cpu_seconds": 0.6365820000000002,
-            "framing_cpu_ratio": 4.338325342710816,
-            "first_record_seconds": 3.956299042329192E-05
+            "framing_seconds": 0.1369666469981894,
+            "framing_cpu_seconds": 0.15216879999999966,
+            "qurtail_seconds": 0.6169568150071427,
+            "qurtail_cpu_seconds": 0.6855025999999995,
+            "framing_cpu_ratio": 4.504882735488491,
+            "first_record_seconds": 4.074297612532973e-05
           }
         ],
-        "framing_seconds": 0.1406142699997872,
-        "framing_cpu_seconds": 0.15622979999999975,
-        "qurtail_seconds": 0.6138827179966029,
-        "qurtail_cpu_seconds": 0.6820788999999998,
-        "total_framing_cpu_seconds": 0.46259059999999974,
-        "total_qurtail_cpu_seconds": 2.0513634,
-        "records_per_second": 814487.8253483704,
-        "framing_cpu_ratio": 4.434511639449658,
+        "framing_seconds": 0.14256480400217697,
+        "framing_cpu_seconds": 0.15840470000000018,
+        "qurtail_seconds": 0.6859472399810329,
+        "qurtail_cpu_seconds": 0.7621584000000001,
+        "total_framing_cpu_seconds": 0.48678829999999984,
+        "total_qurtail_cpu_seconds": 2.3555635999999995,
+        "records_per_second": 728919.0346677763,
+        "framing_cpu_ratio": 4.838989762079327,
         "peak_additional_bytes": 1915241,
-        "first_record_seconds": 4.981399979442358E-05,
+        "first_record_seconds": 5.766196409240365e-05,
         "gates": {
           "at_least_50000_records_per_second": true,
           "peak_additional_memory_below_64_mib": true,
@@ -66,7 +66,7 @@
     },
     "windows": {
       "environment": "Native Windows, isolated Python 3.12 environment and freshly built wheel",
-      "tests_run": 145,
+      "tests_run": 148,
       "tests_skipped": 6,
       "tests_passed": true,
       "installed_smoke_passed": true,
@@ -83,40 +83,40 @@
         "timing_trials": 3,
         "timing_samples": [
           {
-            "framing_seconds": 0.5611627000034787,
-            "framing_cpu_seconds": 0.515625,
-            "qurtail_seconds": 1.5579281999962404,
-            "qurtail_cpu_seconds": 1.5,
-            "framing_cpu_ratio": 2.909090909090909,
-            "first_record_seconds": 6.930000381544232E-05
+            "framing_seconds": 0.37285779998637736,
+            "framing_cpu_seconds": 0.375,
+            "qurtail_seconds": 0.9103292999789119,
+            "qurtail_cpu_seconds": 0.875,
+            "framing_cpu_ratio": 2.3333333333333335,
+            "first_record_seconds": 5.0399976316839457e-05
           },
           {
-            "framing_seconds": 0.5049597999895923,
+            "framing_seconds": 0.508765599981416,
             "framing_cpu_seconds": 0.484375,
-            "qurtail_seconds": 1.6475069999869447,
-            "qurtail_cpu_seconds": 1.390625,
-            "framing_cpu_ratio": 2.870967741935484,
-            "first_record_seconds": 6.520000169984996E-05
+            "qurtail_seconds": 1.1591925999964587,
+            "qurtail_cpu_seconds": 1.125,
+            "framing_cpu_ratio": 2.3225806451612905,
+            "first_record_seconds": 7.749994983896613e-05
           },
           {
-            "framing_seconds": 0.4163837000087369,
+            "framing_seconds": 0.45466340001439676,
             "framing_cpu_seconds": 0.421875,
-            "qurtail_seconds": 1.60257340001408,
-            "qurtail_cpu_seconds": 1.421875,
-            "framing_cpu_ratio": 3.3703703703703702,
-            "first_record_seconds": 6.029999349266291E-05
+            "qurtail_seconds": 1.2900793999433517,
+            "qurtail_cpu_seconds": 1.28125,
+            "framing_cpu_ratio": 3.037037037037037,
+            "first_record_seconds": 3.7299992982298136e-05
           }
         ],
-        "framing_seconds": 0.5049597999895923,
-        "framing_cpu_seconds": 0.484375,
-        "qurtail_seconds": 1.60257340001408,
-        "qurtail_cpu_seconds": 1.421875,
-        "total_framing_cpu_seconds": 1.421875,
-        "total_qurtail_cpu_seconds": 4.3125,
-        "records_per_second": 311998.1899085602,
-        "framing_cpu_ratio": 3.032967032967033,
+        "framing_seconds": 0.45466340001439676,
+        "framing_cpu_seconds": 0.421875,
+        "qurtail_seconds": 1.1591925999964587,
+        "qurtail_cpu_seconds": 1.125,
+        "total_framing_cpu_seconds": 1.28125,
+        "total_qurtail_cpu_seconds": 3.28125,
+        "records_per_second": 431334.70658933424,
+        "framing_cpu_ratio": 2.5609756097560976,
         "peak_additional_bytes": 1915233,
-        "first_record_seconds": 6.930000381544232E-05,
+        "first_record_seconds": 7.749994983896613e-05,
         "gates": {
           "at_least_50000_records_per_second": true,
           "peak_additional_memory_below_64_mib": true,
@@ -263,15 +263,17 @@
     }
   },
   "report_sha256": {
-    "benchmarks/interleaved-results.json": "682c8f041b006e03cfdccdd7d75fcd965fd7e62a5e6b900668944cd5a319a563",
-    "benchmarks/interleaved-agent-results.json": "eb656a47990dfee4a09fad2884f919bb51f34ef2eeaee6ddf1cfb03a98d59e0e",
-    "benchmarks/external-validation-results.json": "eda9a5c0804afa3c0d1501ac6ebe5cc5a04333441dc5537c198d91767ca98560",
-    "benchmarks/hdfs-full-results.json": "405a259c6d0c8c1915dd587212ea856648a294aad96000b16cb54be7872edf7c"
+    "benchmarks/interleaved-results.json": "600de71e4f47225021fd5e23545716e5787541501d6d3aa50823eba2118254c2",
+    "benchmarks/interleaved-agent-results.json": "6532b2c5722a1e4cad526ca410ddae8f8666afbcd496414dbacc662be26a4766",
+    "benchmarks/external-validation-results.json": "cb12eaf97beee9dfe0a98631f4636cf0a5dd2dd76ef2c457b118f3dcacdf7163",
+    "benchmarks/hdfs-full-results.json": "1dd8018a87dadc6cf536a8d766f619483bfef55f8d282921355f10038b63e5b2"
   },
   "review": {
     "independent_review_completed": true,
     "material_findings_remaining": 0,
     "opt_out_compatibility": "Compared output and process return values after every record, tick, and finish for 1,000 deterministic varied streams against the retained pre-feature baseline; all matched.",
-    "accepted_limitation": "Default mixed counts can hide recurrence and recovery. The held-out recovery episode records default visibility failure and passes with --no-interleaving."
+    "accepted_limitation": "Default mixed counts can hide recurrence and recovery. The held-out recovery episode records default visibility failure and passes with --no-interleaving.",
+    "matcher_reuse_validation": "Independent review: 300 varied streams match pre-fix 622d61d at every record, tick, and finish in both modes; 600-pattern regression checks one compilation per retained pattern.",
+    "agent_fixture_equivalence": "Regenerated fixtures have identical task/evidence hashes and answer keys; original read ledgers and receipts were retained and rescored against the refreshed source metadata."
   }
 }

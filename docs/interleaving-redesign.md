@@ -24,7 +24,8 @@ the same normalization and conservative protections as adjacent repetition.
 
 The original adjacent reducer, command interfaces, optional raw capture,
 diagnostic protections, signal handling, and child exit behavior remain the
-baseline to preserve. Existing unrelated telemetry work stays outside this change.
+baseline to preserve. Telemetry was outside this original interleaving proposal;
+the combined 1.1.0 release also includes opt-in local telemetry.
 
 ## Proposed mechanism
 

@@ -85,7 +85,7 @@ class ExternalValidationTests(unittest.TestCase):
         self.assertEqual(report["critical_primary_present_raw"], 1)
         self.assertEqual(report["critical_primary_lost"], 1)
         self.assertEqual(report["primary_absent_from_raw"], 1)
-        self.assertEqual(report["span_records_individually_visible_or_referenced"], 1)
+        self.assertEqual(report["span_records_individually_visible"], 1)
         self.assertEqual(report["invalid_annotated_spans"], [[3, 9]])
 
     def test_saved_report_covers_pinned_selection_and_current_sources(self):

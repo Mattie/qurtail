@@ -3,7 +3,9 @@
 from io import StringIO
 import json
 import unittest
+from unittest.mock import patch
 
+import qurtail
 from qurtail import _StreamReducer
 
 
@@ -80,8 +82,28 @@ class InterleavingTests(unittest.TestCase):
                                  render(lines, dot_every=dot_every, interleaving=False))
 
     def test_suppressed_matches_do_not_refresh_the_bounded_pattern_index(self):
-        self.assertEqual(render(["first", "second", "first", "third", "first"], pattern_limit=2),
-                         "first\nsecond\n. [1 similar in 0s]\nthird\nfirst\n")
+        for lines in (["first", "second", "third"],
+                      [f"2026-09-10T12:00:00Z INFO service-{i} request_id=aaa" for i in range(3)]):
+            with self.subTest(lines=lines):
+                a, b, c = lines
+                self.assertEqual(render([a, b, a, c, a], pattern_limit=2),
+                                 f"{a}\n{b}\n. [1 similar in 0s]\n{c}\n{a}\n")
+                self.assertEqual(render([a, b, a, c, a], pattern_limit=2, interleaving=False),
+                                 f"{a}\n{b}\n{a}\n{c}\n{a}\n")
+
+    def test_alternating_fast_patterns_compile_once_while_retained(self):
+        lines = [f"2026-09-10T12:00:00Z INFO service-{i} request_id=aaa" for i in range(600)]
+        for interleaving in (True, False):
+            with self.subTest(interleaving=interleaving):
+                with patch("qurtail._compile_fast_text_matcher",
+                           wraps=qurtail._compile_fast_text_matcher) as compile_matcher:
+                    output = render(lines * 3, interleaving=interleaving)
+                self.assertEqual(compile_matcher.call_count, 600)
+                if interleaving:
+                    self.assertTrue(output.startswith("\n".join(lines) + "\n"))
+                    self.assertTrue(output.endswith("[1200 similar before stop]\n"))
+                else:
+                    self.assertEqual(output, "\n".join(lines * 3) + "\n")
 
     def test_protected_content_stays_full_between_repeat_counts(self):
         for protected in (["{malformed"] * 2, ["  uncertain content"] * 2,

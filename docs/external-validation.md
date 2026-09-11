@@ -60,8 +60,10 @@ return to a familiar healthy pattern; `--no-interleaving` restores that occurren
 ## Agent evidence
 
 Six fresh agents evaluated three paired synthetic tasks against the current
-dots/counts implementation. Every requested field was correct and supported;
-all three compact arms retrieved raw evidence. Total task/evidence reads cost
+dots/counts implementation. Every requested field matched the answer key, and
+manual review confirmed support in the files read. The scorer checks read
+integrity and answer-key equality; it does not assess evidence grounding.
+All three compact arms retrieved raw evidence. Total task/evidence reads cost
 6,651 tokens for raw views and 7,106 for compact views, **6.84% more**. This small
 trial demonstrates usable raw recovery, without establishing general agent-cost
 savings. The [benchmark inventory](../benchmarks/README.md) gives per-task results.

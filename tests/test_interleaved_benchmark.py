@@ -110,7 +110,7 @@ class RetainedEvaluationTests(unittest.TestCase):
         self.assertEqual(len(report["results"]), 6)
         for result in report["results"]:
             self.assertEqual(result["answers"], keys[result["case"]])
-            self.assertTrue(result["passed"])
+            self.assertTrue(result["answers_match"])
         for view in ("raw", "compact"):
             self.assertEqual(report["total_task_and_evidence_tokens"][view],
                              sum(r["task_and_evidence_tokens"] for r in report["results"] if r["view"] == view))

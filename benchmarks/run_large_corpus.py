@@ -375,10 +375,11 @@ def evaluate_dataset(
                     qurtail_started = time.perf_counter()
                     suppressed = tail.process(text)
                     qurtail_seconds += time.perf_counter() - qurtail_started
-                    if suppressed and truth.unit == "line":
-                        # Counts represent suppressed line occurrences. Stable
-                        # block, application, and instance identifiers need a full
-                        # visible record before they count as retained evidence.
+                    if (suppressed and truth.unit == "line"
+                            and (qurtail_options or {}).get("interleaving", True) is False):
+                        # Adjacent-only counts identify the repeated exemplar.
+                        # Mixed counts cannot identify hidden anomalous occurrences.
+                        # Stable identifiers still require a full visible record.
                         writer.units.update(units)
                 if remaining is not None:
                     remaining -= 1
