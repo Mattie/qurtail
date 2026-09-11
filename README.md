@@ -73,9 +73,9 @@ qurtail -F --dot-every 10 app.log
 ```
 
 Every suppressed record produces one dot by default. Qurtail buffers those dots into short runs,
-then closes the run with the exact repeat count and a newline when the pattern changes, 30 seconds
-pass, or monitoring stops. It doesn't go back and redraw old terminal lines with backspaces or
-carriage returns, so captured output stays readable too.
+then closes the run with the exact repeat count and a newline before a message prints in full,
+when 30 seconds pass, or when monitoring stops. It doesn't go back and redraw old terminal lines
+with backspaces or carriage returns, so captured output stays readable too.
 
 Familiar messages still become dots when other patterns occur between them. A closing count can
 therefore include several familiar patterns. Use `--no-interleaving` to restore consecutive-only
@@ -145,8 +145,7 @@ malformed structured records and multiline content qurtail isn't sure how to joi
 Unfamiliar warning, error, and fatal patterns stay visible, along with new HTTP status values and
 changed structured error payloads. Same-level errors with unfamiliar details get a full record.
 Tracebacks, stack traces, and other multiline diagnostic blocks stay together. Repeated identical
-errors may be summarized after one complete example. A return to a previously printed status can
-also become a dot; `--no-interleaving` keeps those returns visible after another pattern.
+errors may be summarized after one complete example.
 
 Every suppressed record increments the current run's total count. Suppressed records don't
 teach the matcher new patterns, which means a hidden record cannot become the hidden example that
