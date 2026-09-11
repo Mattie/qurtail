@@ -15,8 +15,10 @@ import threading
 import time
 from typing import BinaryIO, Callable, TextIO
 
+from _qurtail_telemetry import start_session
 
-__version__ = "1.0.0"
+
+__version__ = "1.1.0"
 
 DEFAULT_TAIL_LINES = 10
 DEFAULT_DOT_EVERY = 1
@@ -563,6 +565,7 @@ class _StreamReducer:
         clock: Callable[[], float] = time.monotonic,
         live_timer: bool = False,
         aggressive: bool = False,
+        interleaving: bool = True,
     ) -> None:
         if dot_every < 1:
             raise ValueError("dot_every must be at least 1")
@@ -578,14 +581,13 @@ class _StreamReducer:
         self._clock = clock
         self._live_timer = live_timer
         self._aggressive = aggressive
+        self._interleaving = interleaving
         self._patterns: OrderedDict[object, None] = OrderedDict()
         self._diagnostic_open = False
         self._first_record = True
         self._recent_signature: object | None = None
         self._fast_matcher_signature: object | None = None
         self._fast_matcher: tuple[re.Pattern[str], str] | None = None
-
-        self._run_signature: object | None = None
         self._run_count = 0
         self._run_started = 0.0
         self._last_dot_flush = 0.0
@@ -597,7 +599,7 @@ class _StreamReducer:
 
     def _schedule_timer(self) -> None:
         """Schedule live dot and summary progress while a run is open."""
-        if not self._live_timer or self._run_signature is None or self._finished:
+        if not self._live_timer or not self._run_count or self._finished:
             return
         if self._timer is not None:
             return
@@ -685,8 +687,8 @@ class _StreamReducer:
         self._last_dot_flush = now
 
     def _close_run(self, now: float, *, reason: str) -> None:
-        """Close one repeated-pattern run with its exact suppressed count."""
-        if self._run_signature is None:
+        """Close a run with the total number of suppressed records."""
+        if not self._run_count:
             return
         self._write_pending_dots(now, force=True)
         prefix = " " if self._dots_written else ""
@@ -698,22 +700,18 @@ class _StreamReducer:
         self._output.write(prefix + summary + "\n")
         self._output.flush()
         self._cancel_timer()
-        self._run_signature = None
         self._run_count = 0
         self._run_started = 0.0
         self._last_dot_flush = 0.0
         self._dots_written = 0
 
-    def _suppress(self, signature: object, now: float) -> None:
-        """Add one record to the active repeated-pattern run."""
-        if self._run_signature is not None and signature != self._run_signature:
-            self._close_run(now, reason="change")
-        if self._run_signature is None:
-            self._run_signature = signature
+    def _suppress(self, now: float) -> None:
+        """Count one familiar record, sharing the run across interleaved patterns."""
+        if not self._run_count:
             self._run_started = now
             self._last_dot_flush = now
-            self._schedule_timer()
         self._run_count += 1
+        self._schedule_timer()
         due = self._run_count // self._dot_every - self._dots_written
         if (
             due >= DOT_BATCH_SIZE
@@ -737,13 +735,13 @@ class _StreamReducer:
             and "Traceback (most recent call last):" not in printable
         )
         if not common_record and self._keep_diagnostic(printable):
-            if self._run_signature is not None:
+            if self._run_count:
                 self._close_run(self._clock(), reason="change")
             self._recent_signature = None
             self._write_visible(printable)
             return False
 
-        candidate = self._run_signature or self._recent_signature
+        candidate = self._recent_signature
         if candidate is not self._fast_matcher_signature:
             self._fast_matcher_signature = candidate
             self._fast_matcher = _compile_fast_text_matcher(candidate)
@@ -756,21 +754,22 @@ class _StreamReducer:
             and fast_match.end() == len(printable) - len(suffix)
             and printable.endswith(suffix)
         ):
-            self._suppress(candidate, self._clock())
+            self._suppress(self._clock())
             return True
 
         signature = _signature(printable, aggressive=self._aggressive)
         if signature is not None and signature in self._patterns:
-            if signature != self._recent_signature:
-                if self._run_signature is not None:
+            if not self._interleaving and signature != self._recent_signature:
+                if self._run_count:
                     self._close_run(self._clock(), reason="change")
                 self._recent_signature = signature
                 self._write_visible(printable)
                 return False
-            self._suppress(signature, self._clock())
+            self._recent_signature = signature
+            self._suppress(self._clock())
             return True
 
-        if self._run_signature is not None:
+        if self._run_count:
             self._close_run(self._clock(), reason="change")
         if signature is not None:
             self._remember(signature)
@@ -787,7 +786,7 @@ class _StreamReducer:
 
     def _tick_locked(self, now: float) -> None:
         """Advance buffered output using a supplied current time."""
-        if self._run_signature is None:
+        if not self._run_count:
             return
         self._write_pending_dots(now)
         if now - self._run_started >= self._summary_interval:
@@ -809,7 +808,7 @@ class _StreamReducer:
             if self._finished:
                 return
             self._finished = True
-            if self._run_signature is not None:
+            if self._run_count:
                 self._close_run(self._clock(), reason="stop")
             self._output.flush()
             return
@@ -1274,7 +1273,7 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Follow logs while compacting conservative repeated patterns.",
         epilog=(
             "Run a child command: qurtail run [--aggressive] [--dot-every N] "
-            "[--raw-log PATH] [--overwrite] -- COMMAND..."
+            "[--no-interleaving] [--raw-log PATH] [--overwrite] -- COMMAND..."
         ),
     )
     parser.add_argument("file", nargs="?", help="file to read; stdin when omitted")
@@ -1310,6 +1309,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action="version",
         version=f"%(prog)s {__version__}",
     )
+    parser.add_argument(
+        "--no-interleaving",
+        action="store_true",
+        help="only suppress consecutive repetitions; print familiar patterns when they return",
+    )
     return parser
 
 
@@ -1338,6 +1342,11 @@ def _build_run_parser() -> argparse.ArgumentParser:
         type=Path,
         metavar="PATH",
         help="write exact combined output bytes to a new PATH",
+    )
+    parser.add_argument(
+        "--no-interleaving",
+        action="store_true",
+        help="only suppress consecutive repetitions; print familiar patterns when they return",
     )
     parser.add_argument(
         "--overwrite",
@@ -1371,6 +1380,7 @@ def _run_mode(argv: list[str]) -> int:
         dot_every=args.dot_every,
         live_timer=True,
         aggressive=args.aggressive,
+        interleaving=not args.no_interleaving,
     )
     try:
         return _run_child_command(
@@ -1385,9 +1395,8 @@ def _run_mode(argv: list[str]) -> int:
         reducer.finish()
 
 
-def main(argv: list[str] | None = None) -> int:
-    """Run the qurtail command and return its process exit status."""
-    arguments = sys.argv[1:] if argv is None else argv
+def _main(arguments: list[str]) -> int:
+    """Parse and run qurtail after invocation-wide setup is complete."""
     if arguments[:1] == ["run"]:
         return _run_mode(arguments[1:])
 
@@ -1405,6 +1414,7 @@ def main(argv: list[str] | None = None) -> int:
         dot_every=args.dot_every,
         live_timer=True,
         aggressive=args.aggressive,
+        interleaving=not args.no_interleaving,
     )
     try:
         if args.file:
@@ -1423,6 +1433,31 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         reducer.finish()
     return 0
+
+
+def _system_exit_status(code: object) -> int:
+    """Map SystemExit's public values to the process status they represent."""
+    if code is None:
+        return 0
+    if isinstance(code, int):
+        return code
+    return 1
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Run the qurtail command and return its process exit status."""
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    recorded_argv = list(sys.argv) if argv is None else ["qurtail", *arguments]
+    telemetry = start_session(recorded_argv, __version__)
+    try:
+        status = _main(arguments)
+    except SystemExit as exit_error:
+        telemetry.finish(_system_exit_status(exit_error.code))
+        raise
+    except BaseException:
+        raise
+    telemetry.finish(status)
+    return status
 
 
 if __name__ == "__main__":

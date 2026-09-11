@@ -6,7 +6,7 @@ read the whole thing, it gets expensive and fairly useless.
 
 `qurtail` gives you or your agent a smaller view of the stream. It prints the first example of a
 repeated pattern, shows dots while more copies arrive, and closes the run with an exact count.
-Warnings, errors, status changes, unfamiliar numbers, and multiline diagnostics stay visible.
+Unfamiliar warnings, errors, status changes, numbers, and multiline diagnostics stay visible.
 
 ```text
 > qurtail -F -n 50 app.log
@@ -77,6 +77,11 @@ then closes the run with the exact repeat count and a newline when the pattern c
 pass, or monitoring stops. It doesn't go back and redraw old terminal lines with backspaces or
 carriage returns, so captured output stays readable too.
 
+Familiar messages still become dots when other patterns occur between them. A closing count can
+therefore include several familiar patterns. Use `--no-interleaving` to restore consecutive-only
+compaction when you need to see a pattern returning, such as a previously observed healthy state.
+See [interleaved repetition](docs/interleaved.md) for examples and raw-log recovery.
+
 ## Run a command
 
 If qurtail is launching the noisy command, use `run`:
@@ -137,12 +142,13 @@ replication lag is 900 seconds
 Unknown shapes, ambiguous values, and unfamiliar changing values also print in full. So do
 malformed structured records and multiline content qurtail isn't sure how to join.
 
-Warning, error, and fatal transitions stay visible, along with HTTP status changes and changed
-structured error payloads. Same-level errors with different details each get a full record.
+Unfamiliar warning, error, and fatal patterns stay visible, along with new HTTP status values and
+changed structured error payloads. Same-level errors with unfamiliar details get a full record.
 Tracebacks, stack traces, and other multiline diagnostic blocks stay together. Repeated identical
-errors may be summarized after one complete example.
+errors may be summarized after one complete example. A return to a previously printed status can
+also become a dot; `--no-interleaving` keeps those returns visible after another pattern.
 
-Every suppressed record increments the count for its visible pattern. Suppressed records don't
+Every suppressed record increments the current run's total count. Suppressed records don't
 teach the matcher new patterns, which means a hidden record cannot become the hidden example that
 makes some later line disappear.
 
@@ -193,6 +199,13 @@ The included `qurtail-fluency` skill makes qurtail the default for verbose tests
 installers, development servers, services, container and Kubernetes workloads, and followed logs.
 
 ## Changelog
+
+### 1.1.0
+
+- Compact familiar interleaved messages with the existing dots and counts. Added
+  `--no-interleaving` to restore consecutive-only compaction.
+- Added off-by-default command telemetry for local debugging. Full mode records command-line
+  arguments; see [`docs/telemetry.md`](docs/telemetry.md).
 
 ### 1.0.0
 

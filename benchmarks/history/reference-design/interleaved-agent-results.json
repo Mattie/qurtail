@@ -1,0 +1,349 @@
+{
+  "schema_version": 1,
+  "protocol": "Six fresh agents, paired fixed tasks, alternating blinded raw/compact arms; one run per arm. File reads and tool-call counts are agent-reported. One global-instructions read is sanitized and excluded. These are task/evidence content counts, not provider billing, total context, model output, or tool framing.",
+  "fixture_manifest": {
+    "schema_version": 1,
+    "qurtail_sha256": "be4fc1d43da2e628c68f50bc0b8d75ce75f79f54122d2c29bd7bf3e1ea25c7c5",
+    "generator_sha256": "ee7f148a4cf858bc4a6da3545e762717408fa4567d0d37978f6e50c890df4615",
+    "cases": [
+      {
+        "id": "peers-and-backoff",
+        "records": 120,
+        "split_after_source_record": 60,
+        "initial_files": [
+          "poll-1.txt",
+          "poll-2.txt"
+        ],
+        "expected": {
+          "failed_peers": [
+            2,
+            3
+          ],
+          "final_timeout_ms": 60000
+        },
+        "arms": {
+          "arm-a": {
+            "view": "raw",
+            "files": {
+              "task.md": "dd632fdd607556fd20da685676a8be17ee7471b5b5cda8284a4d11ba08fd73c3",
+              "poll-1.txt": "fbd2c2c4d0e125862cc85cd3589dec904ada2a9ae5261c730b1da2a6886b26a1",
+              "poll-2.txt": "47cd22f60fab2e3c97b648c42f111cbc6a95e16d71023ee63818053c9c89e0a8",
+              "raw.log": "982586757bf2a54480e6155ea3a8ef433b5a402214a921313db728ab11db14a4"
+            }
+          },
+          "arm-b": {
+            "view": "compact",
+            "files": {
+              "task.md": "dd632fdd607556fd20da685676a8be17ee7471b5b5cda8284a4d11ba08fd73c3",
+              "poll-1.txt": "c4746522e25870e48385f09c97b3f25e7c0007f488ba25b68b0af9b00f16839b",
+              "poll-2.txt": "bac5104ce0211b98b4a0908db9c03f9e8202a7d9720fc840fcbbf58441fb9cba",
+              "raw.log": "982586757bf2a54480e6155ea3a8ef433b5a402214a921313db728ab11db14a4"
+            }
+          }
+        }
+      },
+      {
+        "id": "recovery-and-raw-id",
+        "records": 30,
+        "split_after_source_record": 24,
+        "initial_files": [
+          "poll-1.txt",
+          "poll-2.txt"
+        ],
+        "expected": {
+          "recovered": true,
+          "first_recovery_timestamp": "2026-09-10T12:00:25Z",
+          "final_worker_a_request_id": "retry-3"
+        },
+        "arms": {
+          "arm-a": {
+            "view": "compact",
+            "files": {
+              "task.md": "d54dbab77507be7a0617fd3f62abf7c8115e5925c6311fd2ad4546df24273727",
+              "poll-1.txt": "5389edd4fa86aa5dee5eb581f5d1547fce12481bc3b9b3b34c50f2702e6a8c0a",
+              "poll-2.txt": "a7b37c52fc70b7e93dfb20caa3f8992f7b219bf3479a5a13d5adf1ccd5df6564",
+              "raw.log": "d4a1da75af920280dd623815e70d0bda742f7f58a4270f90466ac58274f069f6"
+            }
+          },
+          "arm-b": {
+            "view": "raw",
+            "files": {
+              "task.md": "d54dbab77507be7a0617fd3f62abf7c8115e5925c6311fd2ad4546df24273727",
+              "poll-1.txt": "33ad19506cfc90a0ee5c2612aedcf21b3fd10b895fc2ee95030b2100a1565c62",
+              "poll-2.txt": "6e81db78fb57b6d7130a45db603f882d01407c6266211f4562b50de089b69bfc",
+              "raw.log": "d4a1da75af920280dd623815e70d0bda742f7f58a4270f90466ac58274f069f6"
+            }
+          }
+        }
+      },
+      {
+        "id": "later-poll-without-anchors",
+        "records": 64,
+        "split_after_source_record": 31,
+        "initial_files": [
+          "poll-2.txt"
+        ],
+        "expected": {
+          "failing_peer": 3,
+          "recovered_at_end": true
+        },
+        "arms": {
+          "arm-a": {
+            "view": "raw",
+            "files": {
+              "task.md": "a2692366bd12957455520cf613c25775ee5a34529e08db8f6ae70832e7f797ca",
+              "poll-1.txt": "45cfc2750c5baabb92cce44dac84d0dffa3e7c0f8240eb695a913eb1281a03f5",
+              "poll-2.txt": "7701af022b41f255a7a2dcad8a1b3c953f8f502c39391fd1fde27f7575ca6519",
+              "raw.log": "c9cd01dce6ff912219ac12b15d1513be0a26e9c6a9e495c1cf4bd9d36ad85d99"
+            }
+          },
+          "arm-b": {
+            "view": "compact",
+            "files": {
+              "task.md": "a2692366bd12957455520cf613c25775ee5a34529e08db8f6ae70832e7f797ca",
+              "poll-1.txt": "10dcba98411f2c22a9986a1c9c7527612604fb246690da619bc4aa7ec2f68fa7",
+              "poll-2.txt": "2836c1b9db8c6f06dabeaae9ecd1b6fb846135a61e82e4935b4bd1daf79b6518",
+              "raw.log": "c9cd01dce6ff912219ac12b15d1513be0a26e9c6a9e495c1cf4bd9d36ad85d99"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "receipts_sha256": "19a4a37149333cbaa2d36b16896581d2b6f9c9d6f0427c3461104ea8502b8e97",
+  "scorer_sha256": "86b50e38ae8cd744c8225b4881bac8b7e64e377723673b43bee726a2e55fea4c",
+  "tokenizer": {
+    "package": "tiktoken 0.13.0",
+    "encoding": "o200k_base",
+    "scope": "sum of each whole task/evidence file read, including rereads"
+  },
+  "results": [
+    {
+      "case": "peers-and-backoff",
+      "arm": "arm-a",
+      "answers": {
+        "failed_peers": [
+          2,
+          3
+        ],
+        "final_timeout_ms": 60000
+      },
+      "evidence": "Connection failures continue for peer 2 at 2026-09-10T12:01:57Z and peer 3 at 2026-09-10T12:01:58Z. The latest entry, 2026-09-10T12:01:59Z, reports \"notification timeout: 60000\".",
+      "files_read": [
+        "task.md",
+        "poll-1.txt",
+        "poll-2.txt"
+      ],
+      "tool_calls": 3,
+      "additional_setup_reads": [
+        "global agent instructions (excluded from task/evidence counts)"
+      ],
+      "view": "raw",
+      "reads": [
+        {
+          "file": "task.md",
+          "sha256": "dd632fdd607556fd20da685676a8be17ee7471b5b5cda8284a4d11ba08fd73c3",
+          "tokens": 234
+        },
+        {
+          "file": "poll-1.txt",
+          "sha256": "fbd2c2c4d0e125862cc85cd3589dec904ada2a9ae5261c730b1da2a6886b26a1",
+          "tokens": 1812
+        },
+        {
+          "file": "poll-2.txt",
+          "sha256": "47cd22f60fab2e3c97b648c42f111cbc6a95e16d71023ee63818053c9c89e0a8",
+          "tokens": 1820
+        }
+      ],
+      "task_and_evidence_tokens": 3866,
+      "passed": true
+    },
+    {
+      "case": "peers-and-backoff",
+      "arm": "arm-b",
+      "answers": {
+        "failed_peers": [
+          2,
+          3
+        ],
+        "final_timeout_ms": 60000
+      },
+      "evidence": "Exemplars #1 and #2 report 'cannot connect to peer 2' and 'cannot connect to peer 3'; their latest repeats are at 12:01:57Z and 12:01:58Z. Exemplar #11 reports 'notification timeout: 60000' at 12:01:41Z, with its latest repeat at 2026-09-10T12:01:59Z.",
+      "files_read": [
+        "task.md",
+        "poll-1.txt",
+        "poll-2.txt"
+      ],
+      "tool_calls": 2,
+      "view": "compact",
+      "reads": [
+        {
+          "file": "task.md",
+          "sha256": "dd632fdd607556fd20da685676a8be17ee7471b5b5cda8284a4d11ba08fd73c3",
+          "tokens": 234
+        },
+        {
+          "file": "poll-1.txt",
+          "sha256": "c4746522e25870e48385f09c97b3f25e7c0007f488ba25b68b0af9b00f16839b",
+          "tokens": 1407
+        },
+        {
+          "file": "poll-2.txt",
+          "sha256": "bac5104ce0211b98b4a0908db9c03f9e8202a7d9720fc840fcbbf58441fb9cba",
+          "tokens": 1340
+        }
+      ],
+      "task_and_evidence_tokens": 2981,
+      "passed": true
+    },
+    {
+      "case": "recovery-and-raw-id",
+      "arm": "arm-a",
+      "answers": {
+        "recovered": true,
+        "first_recovery_timestamp": "2026-09-10T12:00:25Z",
+        "final_worker_a_request_id": "retry-3"
+      },
+      "evidence": "Worker-a logged connection refused at 2026-09-10T12:00:24Z, then completed successfully at 2026-09-10T12:00:25Z. Its final raw log entry at 2026-09-10T12:00:28Z contains request_id=retry-3.",
+      "files_read": [
+        "task.md",
+        "poll-1.txt",
+        "poll-2.txt",
+        "raw.log"
+      ],
+      "tool_calls": 4,
+      "view": "compact",
+      "reads": [
+        {
+          "file": "task.md",
+          "sha256": "d54dbab77507be7a0617fd3f62abf7c8115e5925c6311fd2ad4546df24273727",
+          "tokens": 258
+        },
+        {
+          "file": "poll-1.txt",
+          "sha256": "5389edd4fa86aa5dee5eb581f5d1547fce12481bc3b9b3b34c50f2702e6a8c0a",
+          "tokens": 554
+        },
+        {
+          "file": "poll-2.txt",
+          "sha256": "a7b37c52fc70b7e93dfb20caa3f8992f7b219bf3479a5a13d5adf1ccd5df6564",
+          "tokens": 76
+        },
+        {
+          "file": "raw.log",
+          "sha256": "d4a1da75af920280dd623815e70d0bda742f7f58a4270f90466ac58274f069f6",
+          "tokens": 754
+        }
+      ],
+      "task_and_evidence_tokens": 1642,
+      "passed": true
+    },
+    {
+      "case": "recovery-and-raw-id",
+      "arm": "arm-b",
+      "answers": {
+        "recovered": true,
+        "first_recovery_timestamp": "2026-09-10T12:00:25Z",
+        "final_worker_a_request_id": "retry-3"
+      },
+      "evidence": "Worker-a logged connection refused at 2026-09-10T12:00:24Z, then completed successfully at 2026-09-10T12:00:25Z. Its last logged request ID was request_id=retry-3 at 2026-09-10T12:00:28Z.",
+      "files_read": [
+        "task.md",
+        "poll-1.txt",
+        "poll-2.txt"
+      ],
+      "tool_calls": 2,
+      "view": "raw",
+      "reads": [
+        {
+          "file": "task.md",
+          "sha256": "d54dbab77507be7a0617fd3f62abf7c8115e5925c6311fd2ad4546df24273727",
+          "tokens": 258
+        },
+        {
+          "file": "poll-1.txt",
+          "sha256": "33ad19506cfc90a0ee5c2612aedcf21b3fd10b895fc2ee95030b2100a1565c62",
+          "tokens": 600
+        },
+        {
+          "file": "poll-2.txt",
+          "sha256": "6e81db78fb57b6d7130a45db603f882d01407c6266211f4562b50de089b69bfc",
+          "tokens": 154
+        }
+      ],
+      "task_and_evidence_tokens": 1012,
+      "passed": true
+    },
+    {
+      "case": "later-poll-without-anchors",
+      "arm": "arm-a",
+      "answers": {
+        "failing_peer": 3,
+        "recovered_at_end": true
+      },
+      "evidence": "Peer 3 has repeated connection-refused failures, last at 2026-09-10T12:01:02Z. Its last observed state at 2026-09-10T12:01:03Z is \"healthy and accepting requests\", showing recovery.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt"
+      ],
+      "tool_calls": 2,
+      "view": "raw",
+      "reads": [
+        {
+          "file": "task.md",
+          "sha256": "a2692366bd12957455520cf613c25775ee5a34529e08db8f6ae70832e7f797ca",
+          "tokens": 235
+        },
+        {
+          "file": "poll-2.txt",
+          "sha256": "7701af022b41f255a7a2dcad8a1b3c953f8f502c39391fd1fde27f7575ca6519",
+          "tokens": 814
+        }
+      ],
+      "task_and_evidence_tokens": 1049,
+      "passed": true
+    },
+    {
+      "case": "later-poll-without-anchors",
+      "arm": "arm-b",
+      "answers": {
+        "failing_peer": 3,
+        "recovered_at_end": true
+      },
+      "evidence": "poll-1.txt identifies #3 as peer 3 connection-refused failures and #2 as peer 3 healthy and accepting requests. In poll-2.txt, the last failure (#3) occurs at 2026-09-10T12:01:02Z, followed by the last observed state (#2), healthy, at 2026-09-10T12:01:03Z.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt",
+        "poll-1.txt"
+      ],
+      "tool_calls": 3,
+      "view": "compact",
+      "reads": [
+        {
+          "file": "task.md",
+          "sha256": "a2692366bd12957455520cf613c25775ee5a34529e08db8f6ae70832e7f797ca",
+          "tokens": 235
+        },
+        {
+          "file": "poll-2.txt",
+          "sha256": "2836c1b9db8c6f06dabeaae9ecd1b6fb846135a61e82e4935b4bd1daf79b6518",
+          "tokens": 726
+        },
+        {
+          "file": "poll-1.txt",
+          "sha256": "10dcba98411f2c22a9986a1c9c7527612604fb246690da619bc4aa7ec2f68fa7",
+          "tokens": 719
+        }
+      ],
+      "task_and_evidence_tokens": 1680,
+      "passed": true
+    }
+  ],
+  "total_task_and_evidence_tokens": {
+    "raw": 5927,
+    "compact": 6303
+  },
+  "aggregate_token_reduction": -0.06343850177155397,
+  "passed": true
+}

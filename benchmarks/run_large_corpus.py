@@ -251,7 +251,8 @@ class CountingWriter:
         self.characters += len(text)
         self.bytes += len(text.encode("utf-8"))
         self.newlines += text.count("\n")
-        if text == self.current_printable + "\n":
+        full_record = self.current_printable + "\n"
+        if text == full_record:
             self.units.update(self.current_units)
         return len(text)
 
@@ -375,7 +376,7 @@ def evaluate_dataset(
                     suppressed = tail.process(text)
                     qurtail_seconds += time.perf_counter() - qurtail_started
                     if suppressed and truth.unit == "line":
-                        # An exact count represents repeated line occurrences. Stable
+                        # Counts and ordered references represent line occurrences. Stable
                         # block, application, and instance identifiers need a full
                         # visible record before they count as retained evidence.
                         writer.units.update(units)

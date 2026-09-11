@@ -1,0 +1,953 @@
+{
+  "schema_version": 1,
+  "selection": {
+    "logdx": "All 19 cases under cases/v2, selected before compression measurement.",
+    "rootly": "All three raw log files, preserving stored physical-line order.",
+    "rcaeval": {
+      "services": [
+        "re2ob_checkoutservice",
+        "re2ss_carts",
+        "re2tt_ts-order-service"
+      ],
+      "faults": [
+        "cpu",
+        "delay",
+        "socket"
+      ],
+      "repetition": 1,
+      "note": "Nine complete log tables; no selection by compression outcome."
+    }
+  },
+  "licenses": {
+    "logdx": "CC-BY-4.0: retain attribution and identify modifications",
+    "rootly": "Apache-2.0: retain license/notices and identify modifications",
+    "rcaeval": "MIT: retain copyright and license"
+  },
+  "files": [
+    {
+      "family": "logdx",
+      "path": "logdx/LICENSE",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/LICENSE",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 11760,
+      "git_blob_sha1": "1b4a27914d4ff233b4bc76535319b558fc8a3e2a",
+      "sha256": "916c9e3e5454a31542b91f2974eb301409c7fd95291650cca9e4a5c3c5b4bef6"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/LICENSE-DATA",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/LICENSE-DATA",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 5953,
+      "git_blob_sha1": "3420ec8ef9ff7cad291d3f8743e2df4baccad363",
+      "sha256": "6bf09676079cc14c07077d5aa4c3f55b361e11879521c94df21100ef12cff3ae"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/README.md",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/README.md",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 9922,
+      "git_blob_sha1": "73bca1f4e82c4e1dcfd0932e1b161be524c6c3aa",
+      "sha256": "0e6fca114bcd62de567a796ad649bc4ae3613e34566cf5199f4b6b8ba6dd3b8d"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/dev/moby-buildx-bake-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/dev/moby-buildx-bake-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1379,
+      "git_blob_sha1": "f1c43264399fa2d98e1a137a0b9470ba6eba41f7",
+      "sha256": "ecb864664c6fc6a18bd0fbdd51a15a851a0744405c700e434fa7d5c4c2f4933b"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/dev/moby-buildx-bake-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/dev/moby-buildx-bake-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 3725,
+      "git_blob_sha1": "146db9a966b2af5402c1c59bd2562028d431a5f3",
+      "sha256": "71cc7672926a2abd7ec0da808a164b48f05cfffcbc1bc6623d671280ebe1a223"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/dev/moby-buildx-bake-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/dev/moby-buildx-bake-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 447387,
+      "git_blob_sha1": "3c3373179f11a199353ead83179098580b0c109b",
+      "sha256": "61f1b155691a41b20eb83a14e2e89211698e074c178f5326f61034a394252e72"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/dev/moby-buildx-bake-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/dev/moby-buildx-bake-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1352,
+      "git_blob_sha1": "5074bbd438c080ce756f818c08bb857903728fa2",
+      "sha256": "19a567e7aaf76c56e5846ac4bf00be1ca66f16e933de85d5f18c45d91d3e6230"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/dev/pip-pytest-network-github-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/dev/pip-pytest-network-github-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 996,
+      "git_blob_sha1": "5a7aa4cb65e815be875210c41b7038ecc7804e55",
+      "sha256": "818a32993576bc90c426a72c8bfb1158857e034556787cf5552aa0e22657a199"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/dev/pip-pytest-network-github-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/dev/pip-pytest-network-github-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 4126,
+      "git_blob_sha1": "37e10bfe97c1e5ebb9aef276ac09aa01bbb9fe0a",
+      "sha256": "ca52bc72efb4934cd6978613c0d39dbf3b65749b48c04b1546569f6571eb344f"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/dev/pip-pytest-network-github-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/dev/pip-pytest-network-github-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 897296,
+      "git_blob_sha1": "a42c60ac1432e31f3f09f9f2ff06dedba2e6d78a",
+      "sha256": "f26bb74f7d75f0d06b820959743436e2ee03f2824847b6dfa1454271de3559ba"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/dev/pip-pytest-network-github-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/dev/pip-pytest-network-github-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1264,
+      "git_blob_sha1": "a9b16796450707d9bba2f60c9ece26e4ab9dc2bc",
+      "sha256": "4d573de0021171f8f05ef6cd35baf9d34dee85350ece2cf188f0949585a01379"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/dev/pnpm-jest-config-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/dev/pnpm-jest-config-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 783,
+      "git_blob_sha1": "ce630e5d5fa65a0413dcd3b98977c3240415b61a",
+      "sha256": "2ada09cc486b53ad71aca061988d19f38260462e27b97e4f0f328cba212c51ac"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/dev/pnpm-jest-config-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/dev/pnpm-jest-config-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 2658,
+      "git_blob_sha1": "67c19748797073eda02e391f0817a3eb1fd33c48",
+      "sha256": "24f3607c92e28621e15734481c8ec99a7f52c7fe648dbde62ea810f20b0e4ada"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/dev/pnpm-jest-config-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/dev/pnpm-jest-config-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 304326,
+      "git_blob_sha1": "d2e5555e57300a2519531df05e01a8c03a80640a",
+      "sha256": "49aee8f0a9f3a029c4804868ce41939286734ee53efdf204e6466af20ddd7cd6"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/dev/pnpm-jest-config-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/dev/pnpm-jest-config-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 901,
+      "git_blob_sha1": "a54267e12fe9c3885374a859f3baf907da2ee8f7",
+      "sha256": "a2ea986b71a91a33768480261985090628f89ae4b897c1acc38e4953ec66651b"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/biome-pnpm-not-found-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/biome-pnpm-not-found-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 965,
+      "git_blob_sha1": "9a966dfdd2971901933805996b18a8be37d775e9",
+      "sha256": "2aaecccca5655e0f5cbc4011c2ed1141b42ef6250acf124c3a2d696918b4f31b"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/biome-pnpm-not-found-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/biome-pnpm-not-found-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 2772,
+      "git_blob_sha1": "f52f146a65917f8e7623f76492f6e98ba90b03bd",
+      "sha256": "87cfbdb103c3328e6d2ffbe9d7b37e55a305e3a7a822aa481947774002aa3029"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/biome-pnpm-not-found-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/biome-pnpm-not-found-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1431623,
+      "git_blob_sha1": "9adfd793ffc9557bb9efb6b9a0efae3d8bc26e4c",
+      "sha256": "de1ee132d54904d7797f65f5fa6749051743ed057acd8e86a2f7c36f29ec2dc3"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/biome-pnpm-not-found-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/biome-pnpm-not-found-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1238,
+      "git_blob_sha1": "ce2b60fc1f9621fe729f9436122d947f906cbc8f",
+      "sha256": "498df28a8226058afdd7a561d029b3fab6dcacde67c46d49dd91fc5973dc20cb"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/dubbo-samples-test-timeout-batch6-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/dubbo-samples-test-timeout-batch6-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1418,
+      "git_blob_sha1": "8c339d941ade722ccda55e8005a03d1edb496add",
+      "sha256": "0d0b4cfe5b7af7586dc8ba9b5fb5c6e939bc95b324c07d886a4d426d958102d3"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/dubbo-samples-test-timeout-batch6-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/dubbo-samples-test-timeout-batch6-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 3787,
+      "git_blob_sha1": "e1b9ece9a7d19d008a756848da1dd23d10a2ced8",
+      "sha256": "334ea66b6fddc37a8530c7497154cd7663bfc69472ef20215b7d248a1cdf7525"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/dubbo-samples-test-timeout-batch6-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/dubbo-samples-test-timeout-batch6-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 586606,
+      "git_blob_sha1": "870234e5a2fc46922e0b227360d3c0284a061a3a",
+      "sha256": "38b82e6010990678ba41a5f5704c30e480ae26c442ff6d3ccabf54db3098ed2e"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/dubbo-samples-test-timeout-batch6-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/dubbo-samples-test-timeout-batch6-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1579,
+      "git_blob_sha1": "838510f61c62c1daa634dd7862fa1ff531bf25fb",
+      "sha256": "d8c2abac33a8d8e8527c7f4477ec727a54510a8ea57150a1e96b5c1a94e46d9b"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/gh-cli-go-test-prompter-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/gh-cli-go-test-prompter-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1154,
+      "git_blob_sha1": "70e4bc4c6685f35dd7300d651449c2fbca8dfe44",
+      "sha256": "0ca4f0c3c358b29fe30a0d6e55244d3d9a9927836fcc25c9911a02aa78329599"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/gh-cli-go-test-prompter-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/gh-cli-go-test-prompter-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 3432,
+      "git_blob_sha1": "480c1a35687bb3e48243ccc0579cc2df5b5f7eb8",
+      "sha256": "19e8944203f7598cb2ef83e3cecf063b8fccb0a05d6c410539c454675782adeb"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/gh-cli-go-test-prompter-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/gh-cli-go-test-prompter-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 45470,
+      "git_blob_sha1": "29e9b7930586b568d75d5f02396ed70fd4a81a2a",
+      "sha256": "faaf053a8e02080f531436891330fad49733d4c7a3fa2905be74747ff685538c"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/gh-cli-go-test-prompter-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/gh-cli-go-test-prompter-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1043,
+      "git_blob_sha1": "94300c86d71c14bcba9e6f0a0f931940366e157b",
+      "sha256": "bfe0b0a32a499397d37de52afb4db2d9a2091dd6bbc3145718714cfd724ab87d"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/go-redis-pubsub-channel-timeout-batch5-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/go-redis-pubsub-channel-timeout-batch5-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1861,
+      "git_blob_sha1": "7e1b1129b5173811cea627ca134f6b0b61be403c",
+      "sha256": "d6affee06b6057422cfd22f37f20a8e3ac5b401bc2280bfab4fb1411e5f1660e"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/go-redis-pubsub-channel-timeout-batch5-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/go-redis-pubsub-channel-timeout-batch5-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 5117,
+      "git_blob_sha1": "aeb0e83520116f3a7a6d0c3c0f47a271ec1d4120",
+      "sha256": "361750d065f17107d101077f9a351739cefc9f75e39bc283dee8484566170ad7"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/go-redis-pubsub-channel-timeout-batch5-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/go-redis-pubsub-channel-timeout-batch5-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 246115,
+      "git_blob_sha1": "d3d736f92b6a018885e4211f35eefbcef0508adb",
+      "sha256": "fedd89509f36021f0818734415a7396f5ab4cb5dc3989a4a96886aa19865a416"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/go-redis-pubsub-channel-timeout-batch5-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/go-redis-pubsub-channel-timeout-batch5-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1677,
+      "git_blob_sha1": "0cd7618c1aba9afbeadf5f35d766cc90135a82c0",
+      "sha256": "a3308e0151ea1264c0f3e834120cb4dd426315137d432460eada6d644eb5a16e"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/gradle-projecthealth-batch5-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/gradle-projecthealth-batch5-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1362,
+      "git_blob_sha1": "de57c9119b6f0034862df6591586860dd9211425",
+      "sha256": "5814e0cb143d201a6203247d6a2f576abba1a7e692a39cd0e14acf328dd068ea"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/gradle-projecthealth-batch5-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/gradle-projecthealth-batch5-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 3342,
+      "git_blob_sha1": "ffc65f891bb379b37da69f42a1664a0fe0e15924",
+      "sha256": "ea5acdd08a2ca9b22dbd6fa3d7ad231650773a93b10c36b4786eda84af3ab24f"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/gradle-projecthealth-batch5-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/gradle-projecthealth-batch5-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1079557,
+      "git_blob_sha1": "5ffded9275d982be5961fe57db62b5eb8d984d55",
+      "sha256": "f2a59b4a6dc08511756031cb19f636617b50bf5e74ebf4be8d2fcd59a3751620"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/gradle-projecthealth-batch5-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/gradle-projecthealth-batch5-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1092,
+      "git_blob_sha1": "1c313d3975d7f06174e684c2329a4771da6e13e7",
+      "sha256": "509ab26c46db52b554ef9eb98851cef872d0d175e9181fc664b6aa773be120c1"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/hibernate-orm-dbversion-test-batch6-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/hibernate-orm-dbversion-test-batch6-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1492,
+      "git_blob_sha1": "ad301bc3c5c02e1ab20ca8770ef3edc300859d12",
+      "sha256": "2a79485b632d1dd63b18407a25be30edffaca46a0ae016dbc223aec11b69f14e"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/hibernate-orm-dbversion-test-batch6-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/hibernate-orm-dbversion-test-batch6-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 4162,
+      "git_blob_sha1": "e0b4dada83ff4e7aecf4dc3f452fbb488157de71",
+      "sha256": "e6774b7b47f5fdbe779c1abb4ae1a04a7551b783e279b08a29a93ae68e426e32"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/hibernate-orm-dbversion-test-batch6-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/hibernate-orm-dbversion-test-batch6-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 4620868,
+      "git_blob_sha1": "22d42af17ed10c7edb55e5b9c2a2b82a85ce050d",
+      "sha256": "35cb42c7f58b6dfa463f3fdf2500efefc804aa801fc51035cbf7070efca3e5b6"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/hibernate-orm-dbversion-test-batch6-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/hibernate-orm-dbversion-test-batch6-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1564,
+      "git_blob_sha1": "af42a115a8c1454f6db4633580920384dc5c8b16",
+      "sha256": "2b1a7f7cb0b0d6041e356438b83c5cdd959c33fd23b86afe3a84a11d5e1763b0"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/pandas-cpp-xsimd-neon64-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/pandas-cpp-xsimd-neon64-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1201,
+      "git_blob_sha1": "3e850082c5b93c568ab84aa94db028949d971378",
+      "sha256": "23b211ef59d12ebff0b4c5de5d942691d512d3cdb4cf8c0057309a4fcd9f4852"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/pandas-cpp-xsimd-neon64-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/pandas-cpp-xsimd-neon64-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 4185,
+      "git_blob_sha1": "89652733fa1038eded9759c1399ac0027dec6170",
+      "sha256": "82fac7295af57a6ccf7ec9a1eef6428f41ebf1c1facb9fa916e4748a0719c0a7"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/pandas-cpp-xsimd-neon64-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/pandas-cpp-xsimd-neon64-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 142682,
+      "git_blob_sha1": "1ebe99d8cfe8cde5d8da0da88fd1f3173e4350aa",
+      "sha256": "3710d506cb58d55356c55dbe1976a937e943adb3c53ea445ed487567bb4e8b4a"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/pandas-cpp-xsimd-neon64-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/pandas-cpp-xsimd-neon64-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1262,
+      "git_blob_sha1": "96f2eb8b7fa35efb3c9fd24474563957156da5fb",
+      "sha256": "25e8903bfe1c738de815ee59469e18f662e13d91da8d9f0fe020965029f546e6"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/pnpm-audit-vuln-ip-address-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/pnpm-audit-vuln-ip-address-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1114,
+      "git_blob_sha1": "ddfb22e8fdee0e881c78de074b3beaf55f172b58",
+      "sha256": "82f28200a9525d6c25d1b1f40542ccfbb0db4ae9971c3d2e460af885eaed7b5c"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/pnpm-audit-vuln-ip-address-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/pnpm-audit-vuln-ip-address-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 3310,
+      "git_blob_sha1": "f20f901bb3ee8ef2543a90ed21ff8041785d6975",
+      "sha256": "202ac5aa24121a625ef99f278e5e874ce8b407cad5f6c94fbb63bd5c35061e2e"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/pnpm-audit-vuln-ip-address-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/pnpm-audit-vuln-ip-address-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 13234,
+      "git_blob_sha1": "ee9d60d8607f8cfe75c1ff99232242a7802bf255",
+      "sha256": "e96af6f01f8fb9b8db9157c702fec244e13c68cc205e2dad72b86e3a30c6edcd"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/pnpm-audit-vuln-ip-address-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/pnpm-audit-vuln-ip-address-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1124,
+      "git_blob_sha1": "99e4c80b460e1d8b2134474dbddbca7f81538af0",
+      "sha256": "0efcda78ad0c23532a699654b710f3978d670d2ea080531f416be169a471280f"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/prettier-jest-snapshot-babel-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/prettier-jest-snapshot-babel-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 903,
+      "git_blob_sha1": "f6741074fb98c4e090d16996ad203415dce590cd",
+      "sha256": "9c73d252592886c8a05cee58b6a000f4e7f7cb87b23834ebd5237a28b7c4606f"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/prettier-jest-snapshot-babel-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/prettier-jest-snapshot-babel-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 3829,
+      "git_blob_sha1": "ca21aacd410fdde4c4bc46c14ec25b888c8ff7b2",
+      "sha256": "61654312b66bf1ab9821437688fd2f0c08c1f2c4f32871de310ff85a094acea6"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/prettier-jest-snapshot-babel-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/prettier-jest-snapshot-babel-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 192509,
+      "git_blob_sha1": "a3b10fa0b5d0fb25e5ade4551321afd29c6b15f4",
+      "sha256": "15d413c062896343ee6c5c4fb7c5b5e7f3c8391379c430c80612746bdca3c696"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/prettier-jest-snapshot-babel-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/prettier-jest-snapshot-babel-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1423,
+      "git_blob_sha1": "0f84c751551e973b26fdb36e605faafb333872ae",
+      "sha256": "fa735d660fc1795bc05e03927c1798627bac8dbf74eca95592eac7a70fca2571"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/spring-boot-checkformat-batch5-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/spring-boot-checkformat-batch5-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1117,
+      "git_blob_sha1": "4161d0c2263e21fd1242b51b38e6ad93a13910d6",
+      "sha256": "4bfb8c2f141c266c45f193d0a548c784fcdd250f4a079b833a98331c3e6fc44d"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/spring-boot-checkformat-batch5-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/spring-boot-checkformat-batch5-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 3207,
+      "git_blob_sha1": "0105fab171b591bb4240b217a3d374d345db024e",
+      "sha256": "2418d8499e1f2a4ac28c228071ffdfcb2196af1a68af43599334023b3bedf436"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/spring-boot-checkformat-batch5-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/spring-boot-checkformat-batch5-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 569317,
+      "git_blob_sha1": "62cc45a0001fa5efb5d0d8f1ea67c6b325d62444",
+      "sha256": "6b589e8b61892766aa6226ba4cecbcd7784a777ffce3dff7cb3f5e00feb9d6fc"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/holdout/spring-boot-checkformat-batch5-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/holdout/spring-boot-checkformat-batch5-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1342,
+      "git_blob_sha1": "b73f053318aed6e280564cc32f544cba2a8db9cd",
+      "sha256": "dc637c5ec2f0776eae4a973ef8963f1f7d74f65cb48ee70d0816c14bdb60e432"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/airflow-precommit-tsc-middle-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/airflow-precommit-tsc-middle-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1925,
+      "git_blob_sha1": "830edd5211d83b1e42ad8bcce3701e240d50d9af",
+      "sha256": "bf781fa1e3efe66be60b044cdf342f1529c62f55b4e632c9979089ecb5028fc4"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/airflow-precommit-tsc-middle-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/airflow-precommit-tsc-middle-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 7629,
+      "git_blob_sha1": "0270039731a1158634a8a1e8f7d1da5d2cc19840",
+      "sha256": "dc73f65ef9505e4ee858c8eb1ec07d3df649ce9a058f683d8be39e5fefc11807"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/airflow-precommit-tsc-middle-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/airflow-precommit-tsc-middle-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1224420,
+      "git_blob_sha1": "3407455e1d3fe9b70f0e597c66c9f363637440c4",
+      "sha256": "79e48f48c735b318392118b901eabe743e943cae6dbf4122ee9c71765e3ab5be"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/airflow-precommit-tsc-middle-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/airflow-precommit-tsc-middle-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 3008,
+      "git_blob_sha1": "29d0542d798de21f151e41f10cec05806d8654dc",
+      "sha256": "a5ec0825d12ca572a721fa99dbf90554b4de3ea8a4f03a5ed29b1d1cc482bc0c"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/argocd-race-conditions-batch5-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/argocd-race-conditions-batch5-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 2143,
+      "git_blob_sha1": "5a38ab303053fce7dca0618e16ddc5548b68168d",
+      "sha256": "513e0bd8b40c67d13659240e986833d46a7ed5076f76331af30b94593d8fe3ee"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/argocd-race-conditions-batch5-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/argocd-race-conditions-batch5-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 5702,
+      "git_blob_sha1": "2c9586e16c118b8338f32276e7a3795b193d52c8",
+      "sha256": "9f759a83efff38579bb26858d21ebbcef2bf158a7220705ce326916dd944777c"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/argocd-race-conditions-batch5-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/argocd-race-conditions-batch5-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 12839913,
+      "git_blob_sha1": "d7ec8cfde1ba37a943207fe832836e33339ad5c9",
+      "sha256": "bc7869e357f8ca8e55cdd2f0fad3e214ff94a90671523cc9c27c1c62cc1d9fca"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/argocd-race-conditions-batch5-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/argocd-race-conditions-batch5-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1783,
+      "git_blob_sha1": "5b64e8f47af8b060bd51422bb762fb63236dcf41",
+      "sha256": "d3cd9f823bbd951925d23fa752efeb0dd1fc6590959776d0610a8641497c9e8e"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/cpython-tcl-windows-matrix-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/cpython-tcl-windows-matrix-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1265,
+      "git_blob_sha1": "667f35106b958912aa7dc243462a0054e251f4f3",
+      "sha256": "969c1c2658e05a64561a9a8a9e7bb250ac2ae2e6adb0475ca8b12dead613e2ec"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/cpython-tcl-windows-matrix-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/cpython-tcl-windows-matrix-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 4517,
+      "git_blob_sha1": "eee030cdfa218d131c9cb17ecd3c2c49307dd83c",
+      "sha256": "fd75abf78e804d9bc237c58ec4305b326b6d9f7b01ad3e5173603df89db235e8"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/cpython-tcl-windows-matrix-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/cpython-tcl-windows-matrix-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 570021,
+      "git_blob_sha1": "36ffae6d6ae40c880d8abbd16ad86e4ab5980ae9",
+      "sha256": "49a109f9f4ff891f79686a8c151c3095de96aef26d6e69978d3fc5513132307b"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/cpython-tcl-windows-matrix-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/cpython-tcl-windows-matrix-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1648,
+      "git_blob_sha1": "4308018f65421b94ba4f48852182ecb861d5e596",
+      "sha256": "5317ff0b2bd1599a716fae7440edc8c4272eda36dcc9d5b6715a6f0b534f762a"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/nodejs-test-debugger-exec-timeout-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/nodejs-test-debugger-exec-timeout-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1796,
+      "git_blob_sha1": "976bcd3e3755b41b1bd2e2bdcef6b2b3c5db399f",
+      "sha256": "da77bda0ab9e55cd116ed84d038b2fbb28a42936e6083ac84ac6154955a7e644"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/nodejs-test-debugger-exec-timeout-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/nodejs-test-debugger-exec-timeout-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 6769,
+      "git_blob_sha1": "348ec9726b9487094a835bd850c27d03f5c44cee",
+      "sha256": "c790c3be2d5bf7bb4e62cd95fb35305dfe0dc07f1bcdf1ead7853f46f64cda4c"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/nodejs-test-debugger-exec-timeout-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/nodejs-test-debugger-exec-timeout-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 5109050,
+      "git_blob_sha1": "dc50e9c02436c3e19dc78b946aaece6b65c2c204",
+      "sha256": "c7278d6e93c780dab44cb22c63f6006a16d93e2fa61629a49c223214c1f5dfa8"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/nodejs-test-debugger-exec-timeout-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/nodejs-test-debugger-exec-timeout-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 2777,
+      "git_blob_sha1": "6777d2840598bad483916a83fb3ab528ee4cd4a6",
+      "sha256": "f470891c395a12b09567e5ffe3ba03ed801f4442fec8c701a69f332a42dfc1dd"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/numpy-pytest-segfault-argsort-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/numpy-pytest-segfault-argsort-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 986,
+      "git_blob_sha1": "21aeac1ce9a4582e8775f623c96f4f643fb45b08",
+      "sha256": "3c15fd4cf54a60d094f8038719ad7243a2347fb345d924f2da4a42cdf64e7311"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/numpy-pytest-segfault-argsort-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/numpy-pytest-segfault-argsort-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 4093,
+      "git_blob_sha1": "b7ac5516b2700d9366890d52d7ab0b790c249c27",
+      "sha256": "592decebf5d2a7e3dae60d26b6199b6312217b3c6f59c4eb5ae8ade662a1bb7d"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/numpy-pytest-segfault-argsort-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/numpy-pytest-segfault-argsort-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 484493,
+      "git_blob_sha1": "11dbc2548f7357107f491030aadf8434fd396dfd",
+      "sha256": "759b48fc5eb812a3a2fa4031c11dfb8fb630c55aae27c650bc23cc6d3789c5ae"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/numpy-pytest-segfault-argsort-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/numpy-pytest-segfault-argsort-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1283,
+      "git_blob_sha1": "f9b802e96168293cd277aea4ab692d532e868fd8",
+      "sha256": "f4e968c28d9e78e8f3ae09a2217553248ede6631f13e0be3698e7b62661e06bf"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/rust-compiletest-wasm-exceptions-asm-v2-001/case.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/rust-compiletest-wasm-exceptions-asm-v2-001/case.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 1823,
+      "git_blob_sha1": "aaae08b3daacf5a835ddcda767174e6300beb51b",
+      "sha256": "15f1ae4660ac0ff12be5cc2f11651a4497d1a812802c27f25110022edf1d690f"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/rust-compiletest-wasm-exceptions-asm-v2-001/ground_truth.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/rust-compiletest-wasm-exceptions-asm-v2-001/ground_truth.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 7738,
+      "git_blob_sha1": "286fe1af89c50af8835c7942941b08077df9ac30",
+      "sha256": "5df4742c74db6c4be7ed7c8c4f335cea690f68bb3e5b09bcde4a410098dbe011"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/rust-compiletest-wasm-exceptions-asm-v2-001/raw.log",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/rust-compiletest-wasm-exceptions-asm-v2-001/raw.log",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 2960177,
+      "git_blob_sha1": "296e6d280d41ec247c166b77157f38021af2ddbf",
+      "sha256": "103cf7d333895a658276b6cf6dfa8e144f065de35cc85a7d54238b8db7b2013b"
+    },
+    {
+      "family": "logdx",
+      "path": "logdx/cases/v2/stress/rust-compiletest-wasm-exceptions-asm-v2-001/tags.json",
+      "url": "https://raw.githubusercontent.com/eyuansu62/LogDx/fc957f0d0d0082019606cc20b8fb545683a03b44/cases/v2/stress/rust-compiletest-wasm-exceptions-asm-v2-001/tags.json",
+      "revision": "fc957f0d0d0082019606cc20b8fb545683a03b44",
+      "size": 3048,
+      "git_blob_sha1": "3117b0ed66671854c961eb06b9522dd3c3bf61df",
+      "sha256": "298f2cf157a387461db0e5633f2337fec2625178882f3ff06e9425e9ee9e0500"
+    },
+    {
+      "family": "rootly",
+      "path": "rootly/LICENSE",
+      "url": "https://raw.githubusercontent.com/Rootly-AI-Labs/logs-dataset/5d7448debdf22ad27358fdcc62fc36205496e3f8/LICENSE",
+      "revision": "5d7448debdf22ad27358fdcc62fc36205496e3f8",
+      "size": 11357,
+      "git_blob_sha1": "261eeb9e9f8b2b4b0d119366dda99c6fd7d35c64",
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "family": "rootly",
+      "path": "rootly/README.md",
+      "url": "https://raw.githubusercontent.com/Rootly-AI-Labs/logs-dataset/5d7448debdf22ad27358fdcc62fc36205496e3f8/README.md",
+      "revision": "5d7448debdf22ad27358fdcc62fc36205496e3f8",
+      "size": 1044,
+      "git_blob_sha1": "c01d36466f79d81cd835862917823006b532ee36",
+      "sha256": "e6fbb1351d4476a806fbf32199c9dec781e3258889e9c373e2c24029fe8b8c84"
+    },
+    {
+      "family": "rootly",
+      "path": "rootly/apache/apache_access.log",
+      "url": "https://raw.githubusercontent.com/Rootly-AI-Labs/logs-dataset/5d7448debdf22ad27358fdcc62fc36205496e3f8/apache/apache_access.log",
+      "revision": "5d7448debdf22ad27358fdcc62fc36205496e3f8",
+      "size": 940011,
+      "git_blob_sha1": "c9b3e45de07ccd6d29f67ad30f9e42a0fcbc25f1",
+      "sha256": "096a471f5d224047a325556430cc93a000264309befb53da6b560cdd6694ae8c"
+    },
+    {
+      "family": "rootly",
+      "path": "rootly/apache/apache_error.log",
+      "url": "https://raw.githubusercontent.com/Rootly-AI-Labs/logs-dataset/5d7448debdf22ad27358fdcc62fc36205496e3f8/apache/apache_error.log",
+      "revision": "5d7448debdf22ad27358fdcc62fc36205496e3f8",
+      "size": 1901560,
+      "git_blob_sha1": "9969f5bfaf47b5cb3c510dbbee78d3d712324aff",
+      "sha256": "de5bcb9187bb16319ff0e6bea6ffb0105765c58cfb1422f4b4bf738099552b1e"
+    },
+    {
+      "family": "rootly",
+      "path": "rootly/openssh/openssh.log",
+      "url": "https://raw.githubusercontent.com/Rootly-AI-Labs/logs-dataset/5d7448debdf22ad27358fdcc62fc36205496e3f8/openssh/openssh.log",
+      "revision": "5d7448debdf22ad27358fdcc62fc36205496e3f8",
+      "size": 4167398,
+      "git_blob_sha1": "5fc7fa0ca5e56e7ecc2c09ecd30ecb99b012b7ef",
+      "sha256": "05339bc2d5cd915beb94e6d8c95ec2c9407e6a863d62325e79fd7c60eb1cd497"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/re2ob_checkoutservice_cpu_1/inject_time.txt",
+      "url": "https://huggingface.co/datasets/phamquiluan/RCAEval/resolve/afeacb11bcc94dadfd1c8f483ee4377b2b8b614e/re2ob_checkoutservice_cpu_1/inject_time.txt",
+      "revision": "afeacb11bcc94dadfd1c8f483ee4377b2b8b614e",
+      "size": 10,
+      "git_blob_sha1": "4b8179e0c4864905c38ab7c53d702b44d0f8e714",
+      "sha256": "c17fcaa1047c07738176849000c1b88e1f0ddda57a2a73a42ab0c8c58c83e0a3"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/re2ob_checkoutservice_cpu_1/logs.parquet",
+      "url": "https://huggingface.co/datasets/phamquiluan/RCAEval/resolve/afeacb11bcc94dadfd1c8f483ee4377b2b8b614e/re2ob_checkoutservice_cpu_1/logs.parquet",
+      "revision": "afeacb11bcc94dadfd1c8f483ee4377b2b8b614e",
+      "size": 336876,
+      "sha256": "e1a25e50c8b0beae4b2886df54d86d2f28877d0b611fed98411e9c0b0c77dad3"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/re2ob_checkoutservice_delay_1/inject_time.txt",
+      "url": "https://huggingface.co/datasets/phamquiluan/RCAEval/resolve/afeacb11bcc94dadfd1c8f483ee4377b2b8b614e/re2ob_checkoutservice_delay_1/inject_time.txt",
+      "revision": "afeacb11bcc94dadfd1c8f483ee4377b2b8b614e",
+      "size": 10,
+      "git_blob_sha1": "ac78589b4127ea2c4c889cf19032f30c1091d1d8",
+      "sha256": "5b8132d68105c187d8aad124f7af4a8bdee399082a1fbf35f2f58aa9d1229d55"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/re2ob_checkoutservice_delay_1/logs.parquet",
+      "url": "https://huggingface.co/datasets/phamquiluan/RCAEval/resolve/afeacb11bcc94dadfd1c8f483ee4377b2b8b614e/re2ob_checkoutservice_delay_1/logs.parquet",
+      "revision": "afeacb11bcc94dadfd1c8f483ee4377b2b8b614e",
+      "size": 350672,
+      "sha256": "f3645724f7c021ba532deea938049a575b75d265e1e0535038f5ea5fbb854b16"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/re2ob_checkoutservice_socket_1/inject_time.txt",
+      "url": "https://huggingface.co/datasets/phamquiluan/RCAEval/resolve/afeacb11bcc94dadfd1c8f483ee4377b2b8b614e/re2ob_checkoutservice_socket_1/inject_time.txt",
+      "revision": "afeacb11bcc94dadfd1c8f483ee4377b2b8b614e",
+      "size": 10,
+      "git_blob_sha1": "4bba7641e975cd85108480a57d4138e2555a84c7",
+      "sha256": "38a03d2cffa1bb4f8da75315f566ab7ca484b7c25e8b2547ce135f9a3ab7bffa"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/re2ob_checkoutservice_socket_1/logs.parquet",
+      "url": "https://huggingface.co/datasets/phamquiluan/RCAEval/resolve/afeacb11bcc94dadfd1c8f483ee4377b2b8b614e/re2ob_checkoutservice_socket_1/logs.parquet",
+      "revision": "afeacb11bcc94dadfd1c8f483ee4377b2b8b614e",
+      "size": 335235,
+      "sha256": "62dc94f259a7c644a35f2accff1f30bf070532cdd286a2e2b11429f99a6a046c"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/re2ss_carts_cpu_1/inject_time.txt",
+      "url": "https://huggingface.co/datasets/phamquiluan/RCAEval/resolve/afeacb11bcc94dadfd1c8f483ee4377b2b8b614e/re2ss_carts_cpu_1/inject_time.txt",
+      "revision": "afeacb11bcc94dadfd1c8f483ee4377b2b8b614e",
+      "size": 10,
+      "git_blob_sha1": "752b2196810a29601407a6826e21fd4a96a43f2f",
+      "sha256": "3f36b0fc7d05c41dc5677b85fa6226b558edd1281a83f632b0495a0b3516ab34"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/re2ss_carts_cpu_1/logs.parquet",
+      "url": "https://huggingface.co/datasets/phamquiluan/RCAEval/resolve/afeacb11bcc94dadfd1c8f483ee4377b2b8b614e/re2ss_carts_cpu_1/logs.parquet",
+      "revision": "afeacb11bcc94dadfd1c8f483ee4377b2b8b614e",
+      "size": 965576,
+      "sha256": "e1cdf34912a1a00b5a612594917c1d5f4aaf82714bed08731f216d53000b913d"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/re2ss_carts_delay_1/inject_time.txt",
+      "url": "https://huggingface.co/datasets/phamquiluan/RCAEval/resolve/afeacb11bcc94dadfd1c8f483ee4377b2b8b614e/re2ss_carts_delay_1/inject_time.txt",
+      "revision": "afeacb11bcc94dadfd1c8f483ee4377b2b8b614e",
+      "size": 10,
+      "git_blob_sha1": "6c56d0c85ce1d230f3e55ea4024b52253142e029",
+      "sha256": "e03d56f9096f1c428b587ef5273aa9678c24695428448c4c6ffac8056d66fce8"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/re2ss_carts_delay_1/logs.parquet",
+      "url": "https://huggingface.co/datasets/phamquiluan/RCAEval/resolve/afeacb11bcc94dadfd1c8f483ee4377b2b8b614e/re2ss_carts_delay_1/logs.parquet",
+      "revision": "afeacb11bcc94dadfd1c8f483ee4377b2b8b614e",
+      "size": 930796,
+      "sha256": "63658d9ad8e0e88f1b82d811219f1dde863e4603ffe1d62cde15fdca10d64488"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/re2ss_carts_socket_1/inject_time.txt",
+      "url": "https://huggingface.co/datasets/phamquiluan/RCAEval/resolve/afeacb11bcc94dadfd1c8f483ee4377b2b8b614e/re2ss_carts_socket_1/inject_time.txt",
+      "revision": "afeacb11bcc94dadfd1c8f483ee4377b2b8b614e",
+      "size": 10,
+      "git_blob_sha1": "f723d6ea6f5d04d95a54af28ab7d97715c3f6c67",
+      "sha256": "5bcbbcb618c4b73a20e6635a88912184cff45e426f274a672a9a94ac78879b53"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/re2ss_carts_socket_1/logs.parquet",
+      "url": "https://huggingface.co/datasets/phamquiluan/RCAEval/resolve/afeacb11bcc94dadfd1c8f483ee4377b2b8b614e/re2ss_carts_socket_1/logs.parquet",
+      "revision": "afeacb11bcc94dadfd1c8f483ee4377b2b8b614e",
+      "size": 1080754,
+      "sha256": "068e77e2e6d9c55f5325f2b2dc4caee6b16f1ae6f05aafd703333fba32ec1f37"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/re2tt_ts-order-service_cpu_1/inject_time.txt",
+      "url": "https://huggingface.co/datasets/phamquiluan/RCAEval/resolve/afeacb11bcc94dadfd1c8f483ee4377b2b8b614e/re2tt_ts-order-service_cpu_1/inject_time.txt",
+      "revision": "afeacb11bcc94dadfd1c8f483ee4377b2b8b614e",
+      "size": 10,
+      "git_blob_sha1": "953d6e6628503a2dd671e88e81619c9a1ec8dd3d",
+      "sha256": "702bdfd6a6e74f043dc36c905a29833c69b82a8255bdc3fe943037ced877ea7f"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/re2tt_ts-order-service_cpu_1/logs.parquet",
+      "url": "https://huggingface.co/datasets/phamquiluan/RCAEval/resolve/afeacb11bcc94dadfd1c8f483ee4377b2b8b614e/re2tt_ts-order-service_cpu_1/logs.parquet",
+      "revision": "afeacb11bcc94dadfd1c8f483ee4377b2b8b614e",
+      "size": 2921420,
+      "sha256": "d1bfbc44853434a97ac16f57cc83ef46297262b51fe0c0e28e4ca90494245c88"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/re2tt_ts-order-service_delay_1/inject_time.txt",
+      "url": "https://huggingface.co/datasets/phamquiluan/RCAEval/resolve/afeacb11bcc94dadfd1c8f483ee4377b2b8b614e/re2tt_ts-order-service_delay_1/inject_time.txt",
+      "revision": "afeacb11bcc94dadfd1c8f483ee4377b2b8b614e",
+      "size": 10,
+      "git_blob_sha1": "71e251de282181675ecc40a040d7b3a2c150c9de",
+      "sha256": "304feaf4eb34a2fd824f7a9ea55bf5c3295d435c7fd15ad4bdd8dc86d588f350"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/re2tt_ts-order-service_delay_1/logs.parquet",
+      "url": "https://huggingface.co/datasets/phamquiluan/RCAEval/resolve/afeacb11bcc94dadfd1c8f483ee4377b2b8b614e/re2tt_ts-order-service_delay_1/logs.parquet",
+      "revision": "afeacb11bcc94dadfd1c8f483ee4377b2b8b614e",
+      "size": 1509539,
+      "sha256": "397c3fa4d2b7974f83f5b98b784f844e4081f946b1aecc48e68a15ee111a4eb4"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/re2tt_ts-order-service_socket_1/inject_time.txt",
+      "url": "https://huggingface.co/datasets/phamquiluan/RCAEval/resolve/afeacb11bcc94dadfd1c8f483ee4377b2b8b614e/re2tt_ts-order-service_socket_1/inject_time.txt",
+      "revision": "afeacb11bcc94dadfd1c8f483ee4377b2b8b614e",
+      "size": 10,
+      "git_blob_sha1": "ee05486f3b4eb6a5a6188e07e848f1bf53f421c0",
+      "sha256": "5eff76a30bcdbe12fe53d76a41c9919fe5f84fe19447f084964aa309ae874baa"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/re2tt_ts-order-service_socket_1/logs.parquet",
+      "url": "https://huggingface.co/datasets/phamquiluan/RCAEval/resolve/afeacb11bcc94dadfd1c8f483ee4377b2b8b614e/re2tt_ts-order-service_socket_1/logs.parquet",
+      "revision": "afeacb11bcc94dadfd1c8f483ee4377b2b8b614e",
+      "size": 3524378,
+      "sha256": "5336bf94e354ae0d0552fcb665f75a23bef14d381b04bf54709314bd7f90ef25"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/LICENSE",
+      "url": "https://raw.githubusercontent.com/phamquiluan/RCAEval/bb48c5aa9a24f1d5fcc716bdd479ea2d63145c90/LICENSE",
+      "revision": "bb48c5aa9a24f1d5fcc716bdd479ea2d63145c90",
+      "size": 1066,
+      "sha256": "9f2c6bb71f29569d5547e52b207bdf10743fbc1943fbe3b5ae200041f3d787e6"
+    },
+    {
+      "family": "rcaeval",
+      "path": "rcaeval/README.md",
+      "url": "https://raw.githubusercontent.com/phamquiluan/RCAEval/bb48c5aa9a24f1d5fcc716bdd479ea2d63145c90/README.md",
+      "revision": "bb48c5aa9a24f1d5fcc716bdd479ea2d63145c90",
+      "size": 21343,
+      "sha256": "3feb2831b49fef48364338a3202141b4206154b3bf59873263faf5f08ef9a1b0"
+    }
+  ]
+}

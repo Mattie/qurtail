@@ -90,10 +90,10 @@ class MonitoringEpisodeTests(unittest.TestCase):
                 self.assertTrue(episode.expected_decision)
                 self.assertTrue(episode.required_blocks)
 
-    def test_every_required_diagnostic_block_remains_complete(self) -> None:
+    def test_required_blocks_remain_complete_in_the_selected_mode(self) -> None:
         for episode in EPISODES:
             with self.subTest(episode=episode.slug):
-                output = _qurtail_output(episode.lines)
+                output = _qurtail_output(episode.lines, interleaving=episode.interleaving)
                 for block in episode.required_blocks:
                     self.assertIn("\n".join(block) + "\n", output)
 
@@ -115,6 +115,13 @@ class MonitoringEpisodeTests(unittest.TestCase):
                 for episode in result["episodes"]
             )
         )
+
+    def test_recovery_benchmark_discloses_default_loss_and_requires_opt_out(self) -> None:
+        result = evaluate_suite(_portable_token_count)
+        recovery = next(item for item in result["episodes"] if item["category"] == "resumed-pattern")
+        self.assertFalse(recovery["interleaving"])
+        self.assertFalse(recovery["default_all_required_blocks_visible"])
+        self.assertTrue(recovery["all_required_blocks_visible"])
 
     def test_nonrepetitive_episodes_are_emitted_without_rewrites(self) -> None:
         for episode in EPISODES:

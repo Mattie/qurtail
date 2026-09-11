@@ -18,26 +18,41 @@ def main() -> int:
     if any("smartytail" in str(path) for path in distribution("qurtail").files or ()):
         raise SystemExit("removed smartytail files are still present in the wheel")
 
-    result = subprocess.run(
-        ["qurtail"],
-        input="heartbeat\nheartbeat\n",
-        text=True,
-        capture_output=True,
-        check=True,
-    )
-    expected = "heartbeat\n. [1 similar before stop]\n"
-    if result.stdout != expected:
-        raise SystemExit(
-            f"unexpected qurtail output: {result.stdout!r}; expected {expected!r}"
-        )
-
-    script = (
-        "import os, sys; "
-        "os.write(1, b'heartbeat\\n'); "
-        "os.write(2, b'heartbeat\\n'); "
-        "sys.exit(7)"
-    )
     with tempfile.TemporaryDirectory() as temporary:
+        environment = os.environ.copy()
+        environment["HOME"] = temporary
+        environment["USERPROFILE"] = temporary
+        result = subprocess.run(
+            ["qurtail"],
+            input="heartbeat\nheartbeat\n",
+            text=True,
+            capture_output=True,
+            check=True,
+            env=environment,
+        )
+        expected = "heartbeat\n. [1 similar before stop]\n"
+        if result.stdout != expected:
+            raise SystemExit(
+                f"unexpected qurtail output: {result.stdout!r}; expected {expected!r}"
+            )
+
+        for arguments, expected_output in (
+            ([], "A\nB\n... [3 similar before stop]\n"),
+            (["--no-interleaving"], "A\nB\nA\nB\nA\n"),
+        ):
+            mode = subprocess.run(
+                ["qurtail", *arguments], input="A\nB\nA\nB\nA\n",
+                text=True, capture_output=True, check=True, env=environment,
+            )
+            if mode.stdout != expected_output:
+                raise SystemExit(f"unexpected interleaving mode output: {mode.stdout!r}")
+
+        script = (
+            "import os, sys; "
+            "os.write(1, b'heartbeat\\n'); "
+            "os.write(2, b'heartbeat\\n'); "
+            "sys.exit(7)"
+        )
         raw_log = Path(temporary) / "child.raw.log"
         runner = subprocess.run(
             [
@@ -53,6 +68,7 @@ def main() -> int:
             text=True,
             capture_output=True,
             check=False,
+            env=environment,
         )
         if runner.returncode != 7:
             raise SystemExit(f"runner returned {runner.returncode}; expected 7")
@@ -76,6 +92,7 @@ def main() -> int:
             text=True,
             capture_output=True,
             check=False,
+            env=environment,
         )
         if replacement.returncode != 0:
             raise SystemExit(

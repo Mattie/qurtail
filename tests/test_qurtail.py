@@ -277,6 +277,7 @@ class StreamReducerTests(unittest.TestCase):
         output, reducer = self.run_stream(
             ["first", "second", "first", "third", "first"],
             pattern_limit=2,
+            interleaving=False,
         )
 
         self.assertEqual(
@@ -454,13 +455,13 @@ class StreamReducerTests(unittest.TestCase):
 
         self.assertEqual(output, first + "\n" + changed + "\n")
 
-    def test_resumed_pattern_prints_a_new_exemplar_after_a_diagnostic(self) -> None:
+    def test_opt_out_prints_resumed_pattern_after_an_error(self) -> None:
         ordinary = "2026-08-08T12:00:00Z INFO heartbeat request_id=abc"
         repeat = "2026-08-08T12:00:01Z INFO heartbeat request_id=def"
         error = "2026-08-08T12:00:02Z ERROR connection refused"
         resumed = "2026-08-08T12:00:03Z INFO heartbeat request_id=ghi"
 
-        output, _ = self.run_stream([ordinary, repeat, error, resumed, resumed])
+        output, _ = self.run_stream([ordinary, repeat, error, resumed, resumed], interleaving=False)
 
         self.assertEqual(
             output,
@@ -476,8 +477,19 @@ class StreamReducerTests(unittest.TestCase):
 class LiveCommandTests(unittest.TestCase):
     """Exercise qurtail's public CLI across real, still-open pipes."""
 
-    @staticmethod
-    def start_qurtail(*arguments: str) -> subprocess.Popen[str]:
+    def setUp(self) -> None:
+        """Keep subprocess telemetry away from the developer's profile."""
+        self.temporary_home = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary_home.cleanup)
+
+    def subprocess_environment(self) -> dict[str, str]:
+        """Return an environment with an isolated cross-platform home."""
+        environment = os.environ.copy()
+        environment["HOME"] = self.temporary_home.name
+        environment["USERPROFILE"] = self.temporary_home.name
+        return environment
+
+    def start_qurtail(self, *arguments: str) -> subprocess.Popen[str]:
         """Start the repository command with controllable standard input."""
         return subprocess.Popen(
             [sys.executable, str(Path(qurtail.__file__).resolve()), *arguments],
@@ -487,6 +499,7 @@ class LiveCommandTests(unittest.TestCase):
             text=True,
             encoding="utf-8",
             errors="replace",
+            env=self.subprocess_environment(),
         )
 
     @staticmethod
@@ -589,9 +602,97 @@ class LiveCommandTests(unittest.TestCase):
 
         self.assertEqual(return_code, 0, stderr)
 
+    def test_interleaved_counts_are_live_and_raw_capture_is_unchanged(self) -> None:
+        a = "INFO service-a completed its scheduled cache refresh"
+        b = "INFO service-b completed its scheduled cache refresh"
+        new = "INFO all work finished"
+        raw = "\n".join([a, b, a, b, a, a, b, new]) + "\n"
+        expected = [
+            a, b, "..... [5 similar in 0s]", new,
+        ]
+        for mode in ("stdin", "run"):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as temporary:
+                raw_path = Path(temporary) / "capture.log"
+                script = (
+                    f"import os, sys; os.write(1, {raw.encode()!r}); "
+                    "sys.stdin.read(); sys.exit(7)"
+                )
+                process = self.start_qurtail(
+                    *( ["run", "--raw-log", str(raw_path), "--", sys.executable, "-c", script]
+                       if mode == "run" else [] )
+                )
+                try:
+                    if mode == "stdin":
+                        assert process.stdin is not None
+                        process.stdin.write(raw)
+                        process.stdin.flush()
+                    for line in expected:
+                        actual = self.read_live_line(process)
+                        if "similar in" in line:
+                            self.assertRegex(actual, r"^\.{5} \[5 similar in \d+s\]\n$")
+                        else:
+                            self.assertEqual(actual, line + "\n")
+                    self.assertIsNone(process.poll(), "counts and new messages must arrive before EOF")
+                    if mode == "run":
+                        self.assertEqual(raw_path.read_bytes(), raw.encode())
+                finally:
+                    status, stderr = self.finish_process(process)
+                self.assertEqual(status, 7 if mode == "run" else 0, stderr)
+
+    @unittest.skipIf(os.name == "nt", "POSIX signal integration; Windows control-break has its own test")
+    def test_cancellation_closes_mixed_repeat_count(self) -> None:
+        a = "INFO service-a completed its scheduled cache refresh"
+        b = "INFO service-b completed its scheduled cache refresh"
+        raw = "\n".join([a, b, a, b, a, a, a]) + "\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            raw_path = Path(temporary) / "capture.log"
+            script = f"import os, sys; os.write(1, {raw.encode()!r}); sys.stdin.read()"
+            process = self.start_qurtail("run", "--raw-log", str(raw_path), "--", sys.executable, "-c", script)
+            try:
+                for expected in (a, b):
+                    self.assertEqual(self.read_live_line(process), expected + "\n")
+                # Wait for live dots, proving all five familiar records were processed.
+                dots: list[str] = []
+                ready = threading.Event()
+
+                def read_dots() -> None:
+                    assert process.stdout is not None
+                    dots.append(process.stdout.read(5))
+                    ready.set()
+
+                reader = threading.Thread(target=read_dots, daemon=True)
+                reader.start()
+                self.assertTrue(ready.wait(5), "live repeat dots never arrived")
+                reader.join(timeout=1)
+                self.assertEqual(dots, ["....."])
+                self.assertEqual(raw_path.read_bytes(), raw.encode())
+                process.terminate()
+                self.assertEqual(self.read_live_line(process), " [5 similar before stop]\n")
+            finally:
+                status, _ = self.finish_process(process)
+            self.assertEqual(status, 143)
+
 
 class CommandTests(unittest.TestCase):
-    """Verify the small 1.0 command surface and tail behavior."""
+    """Verify the small command surface and tail behavior."""
+
+    def setUp(self) -> None:
+        """Keep command tests independent of the developer's profile."""
+        self.temporary_home = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary_home.cleanup)
+        home_patch = patch(
+            "_qurtail_telemetry._home_directory",
+            return_value=Path(self.temporary_home.name),
+        )
+        home_patch.start()
+        self.addCleanup(home_patch.stop)
+
+    def subprocess_environment(self) -> dict[str, str]:
+        """Return an environment with an isolated cross-platform home."""
+        environment = os.environ.copy()
+        environment["HOME"] = self.temporary_home.name
+        environment["USERPROFILE"] = self.temporary_home.name
+        return environment
 
     @staticmethod
     def stop_runner(process: subprocess.Popen[str]) -> None:
@@ -647,6 +748,28 @@ class CommandTests(unittest.TestCase):
             output.getvalue(),
             "one\n. [1 similar in 0s]\ntwo\n",
         )
+
+    def test_no_interleaving_option_applies_to_file_stdin_and_run(self) -> None:
+        raw = "A\nB\nA\nA\nB\n"
+        expected = "A\nB\nA\n. [1 similar in 0s]\nB\n"
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "input.log"
+            path.write_text(raw, encoding="utf-8")
+            capture = Path(directory) / "raw.log"
+            child = f"import os, sys; os.write(1, {raw.encode()!r}); sys.exit(7)"
+            for args, exit_code in (
+                (["--no-interleaving", str(path)], 0),
+                (["--no-interleaving"], 0),
+                (["run", "--no-interleaving", "--raw-log", str(capture),
+                  "--", sys.executable, "-c", child], 7),
+            ):
+                with self.subTest(args=args):
+                    output = StringIO()
+                    with patch.object(sys, "stdin", StringIO(raw)), patch.object(sys, "stdout", output):
+                        status = main(args)
+                    self.assertEqual(status, exit_code)
+                    self.assertEqual(output.getvalue(), expected)
+            self.assertEqual(capture.read_bytes(), raw.encode())
 
     def test_aggressive_option_applies_to_file_and_stdin_input(self) -> None:
         first = "WARN latency_ms=1200 file=/srv/a"
@@ -1041,6 +1164,7 @@ while True:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE,
                 text=True,
+                env=self.subprocess_environment(),
             )
             self.addCleanup(self.stop_runner, runner)
             deadline = time.monotonic() + 5
@@ -1082,6 +1206,7 @@ while True:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE,
                 text=True,
+                env=self.subprocess_environment(),
             )
             self.addCleanup(self.stop_runner, runner)
             deadline = time.monotonic() + 5
@@ -1206,7 +1331,7 @@ while True:
                     qurtail._follow_file(path, 10, reducer)
             reducer.finish()
 
-        self.assertEqual(output.getvalue(), "old\nsame\nnew\nsame\n")
+        self.assertEqual(output.getvalue(), "old\nsame\nnew\n. [1 similar before stop]\n")
 
     def test_file_follower_detects_changed_partial_final_record(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1231,7 +1356,7 @@ while True:
 
         self.assertEqual(
             output.getvalue(),
-            "same\nold-part\nsame\nnew-part-long\n",
+            "same\nold-part\n. [1 similar in 0s]\nnew-part-long\n",
         )
 
     def test_file_follower_with_zero_context_detects_equal_rewrite(self) -> None:
@@ -1336,7 +1461,7 @@ while True:
                 main(["--version"])
 
         self.assertEqual(raised.exception.code, 0)
-        self.assertEqual(output.getvalue(), "qurtail 1.0.0\n")
+        self.assertEqual(output.getvalue(), "qurtail 1.1.0\n")
 
     def test_previous_python_api_is_removed(self) -> None:
         self.assertFalse(hasattr(qurtail, "QurTail"))

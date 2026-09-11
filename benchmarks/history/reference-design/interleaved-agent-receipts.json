@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "protocol": "Six fresh agents, paired fixed tasks, alternating blinded raw/compact arms; one run per arm. File reads and tool-call counts are agent-reported. One global-instructions read is sanitized and excluded. These are task/evidence content counts, not provider billing, total context, model output, or tool framing.",
+  "receipts": [
+    {
+      "case": "peers-and-backoff",
+      "arm": "arm-a",
+      "answers": {
+        "failed_peers": [
+          2,
+          3
+        ],
+        "final_timeout_ms": 60000
+      },
+      "evidence": "Connection failures continue for peer 2 at 2026-09-10T12:01:57Z and peer 3 at 2026-09-10T12:01:58Z. The latest entry, 2026-09-10T12:01:59Z, reports \"notification timeout: 60000\".",
+      "files_read": [
+        "task.md",
+        "poll-1.txt",
+        "poll-2.txt"
+      ],
+      "tool_calls": 3,
+      "additional_setup_reads": [
+        "global agent instructions (excluded from task/evidence counts)"
+      ]
+    },
+    {
+      "case": "peers-and-backoff",
+      "arm": "arm-b",
+      "answers": {
+        "failed_peers": [
+          2,
+          3
+        ],
+        "final_timeout_ms": 60000
+      },
+      "evidence": "Exemplars #1 and #2 report 'cannot connect to peer 2' and 'cannot connect to peer 3'; their latest repeats are at 12:01:57Z and 12:01:58Z. Exemplar #11 reports 'notification timeout: 60000' at 12:01:41Z, with its latest repeat at 2026-09-10T12:01:59Z.",
+      "files_read": [
+        "task.md",
+        "poll-1.txt",
+        "poll-2.txt"
+      ],
+      "tool_calls": 2
+    },
+    {
+      "case": "recovery-and-raw-id",
+      "arm": "arm-a",
+      "answers": {
+        "recovered": true,
+        "first_recovery_timestamp": "2026-09-10T12:00:25Z",
+        "final_worker_a_request_id": "retry-3"
+      },
+      "evidence": "Worker-a logged connection refused at 2026-09-10T12:00:24Z, then completed successfully at 2026-09-10T12:00:25Z. Its final raw log entry at 2026-09-10T12:00:28Z contains request_id=retry-3.",
+      "files_read": [
+        "task.md",
+        "poll-1.txt",
+        "poll-2.txt",
+        "raw.log"
+      ],
+      "tool_calls": 4
+    },
+    {
+      "case": "recovery-and-raw-id",
+      "arm": "arm-b",
+      "answers": {
+        "recovered": true,
+        "first_recovery_timestamp": "2026-09-10T12:00:25Z",
+        "final_worker_a_request_id": "retry-3"
+      },
+      "evidence": "Worker-a logged connection refused at 2026-09-10T12:00:24Z, then completed successfully at 2026-09-10T12:00:25Z. Its last logged request ID was request_id=retry-3 at 2026-09-10T12:00:28Z.",
+      "files_read": [
+        "task.md",
+        "poll-1.txt",
+        "poll-2.txt"
+      ],
+      "tool_calls": 2
+    },
+    {
+      "case": "later-poll-without-anchors",
+      "arm": "arm-a",
+      "answers": {
+        "failing_peer": 3,
+        "recovered_at_end": true
+      },
+      "evidence": "Peer 3 has repeated connection-refused failures, last at 2026-09-10T12:01:02Z. Its last observed state at 2026-09-10T12:01:03Z is \"healthy and accepting requests\", showing recovery.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt"
+      ],
+      "tool_calls": 2
+    },
+    {
+      "case": "later-poll-without-anchors",
+      "arm": "arm-b",
+      "answers": {
+        "failing_peer": 3,
+        "recovered_at_end": true
+      },
+      "evidence": "poll-1.txt identifies #3 as peer 3 connection-refused failures and #2 as peer 3 healthy and accepting requests. In poll-2.txt, the last failure (#3) occurs at 2026-09-10T12:01:02Z, followed by the last observed state (#2), healthy, at 2026-09-10T12:01:03Z.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt",
+        "poll-1.txt"
+      ],
+      "tool_calls": 3
+    }
+  ]
+}
