@@ -1,0 +1,531 @@
+{
+  "schema_version": 1,
+  "fixture_manifest": {
+    "schema_version": 1,
+    "selection": "Last 512 physical records in each named complete replay; one purposive task per family; no population-level agent savings claim.",
+    "qurtail_sha256": "be4fc1d43da2e628c68f50bc0b8d75ce75f79f54122d2c29bd7bf3e1ea25c7c5",
+    "baseline_sha256": "30fde29a4b1c49be20b5c8fc7b3228eb4607645a1a5a18dd1114d5ad7e98c3b5",
+    "generator_sha256": "01643e3b110c425fb60f0d6248e639cbaa6846a94b0bfc1a146ee65326026d10",
+    "reader_sha256": "ecf237f08a9a4bed1c65d1c20763379c81b72255afb92c0543d372bb82cfb45b",
+    "cases": [
+      {
+        "id": "rcaeval-payment",
+        "source": "rcaeval/re2ob_checkoutservice_socket_1",
+        "source_start_record": 176865,
+        "source_end_record": 177376,
+        "source_sha256": "5547c6b26352cf4e288c107b4bf0e45ea04162040f37f41d29252fe14edde896",
+        "expected": {
+          "conversion_container": "currencyservice",
+          "latest_conversion_timestamp": "2024-01-19T09:37:13Z",
+          "last_payment_transaction_id": "931246eb-acd4-4c1e-aafe-d29f326aab54"
+        },
+        "arms": {
+          "arm-a": {
+            "view": "raw",
+            "files": {
+              "task.md": "f849d732e7a17b1c0a0b9989c375123d4be59bb2a03e588cec13a4ebbc8c6e16",
+              "raw.log": "893dc226faf6de495931b09da523728632d278bb17bfa3fa3b6414c13e9fcb38",
+              "poll-1.txt": "b42c7e9c5e0a0961fbf080dbd7e41a4c70d3135b695f6434af5651dee63c27b6",
+              "poll-2.txt": "50044e56385147382baedeaf2e471225e061cf5f5d6327977165dcb752c427ca"
+            }
+          },
+          "arm-b": {
+            "view": "baseline",
+            "files": {
+              "task.md": "f849d732e7a17b1c0a0b9989c375123d4be59bb2a03e588cec13a4ebbc8c6e16",
+              "raw.log": "893dc226faf6de495931b09da523728632d278bb17bfa3fa3b6414c13e9fcb38",
+              "poll-1.txt": "4d0c7b7700704b96df7a354ab3c1e7a563a9450d5f2365dfe5193069a3eb3a65",
+              "poll-2.txt": "5f6f25177d96b67ef17cd59e240fea801e12544ee43baf8aa2122d5598d1fded"
+            }
+          },
+          "arm-c": {
+            "view": "current",
+            "files": {
+              "task.md": "f849d732e7a17b1c0a0b9989c375123d4be59bb2a03e588cec13a4ebbc8c6e16",
+              "raw.log": "893dc226faf6de495931b09da523728632d278bb17bfa3fa3b6414c13e9fcb38",
+              "poll-1.txt": "9302457deaacdd4f90b085df5ce1ce6f1365de380ac0fac11942624d938acd0f",
+              "poll-2.txt": "7d574db8d7a16eaff6e5ffd3b297b5c795d3f3a00001b2e749615914205f1a21"
+            }
+          }
+        }
+      },
+      {
+        "id": "logdx-network",
+        "source": "logdx/pip-pytest-network-github-v2-001",
+        "source_start_record": 6158,
+        "source_end_record": 6669,
+        "source_sha256": "3a2f633634c45f577e36aafa2da057d3ca7d217e33fe1cc31e2d3de39149b128",
+        "expected": {
+          "failed_test": "tests/functional/test_truststore.py::test_no_truststore_can_install[GitHub]",
+          "remote_host": "github.com",
+          "http_status": 502,
+          "reruns": 3,
+          "final_exit_code": 1
+        },
+        "arms": {
+          "arm-a": {
+            "view": "baseline",
+            "files": {
+              "task.md": "24e26468d79429cdb16b48dd84a1ef9af71b8706df15b57ba564b3669d0cb9a5",
+              "raw.log": "40ea45777825775192caef8f8565385543a03ad5644b466e240cb0db9932a10c",
+              "poll-1.txt": "c35b5d0218b4bf25c83d36aa12bd585ae05cc42b9540eb9f4f033ddd72beb7c5",
+              "poll-2.txt": "21312f793d24d90f0007bd78404abda89f9966a1aa4dc55408fbdf393e6746ec"
+            }
+          },
+          "arm-b": {
+            "view": "current",
+            "files": {
+              "task.md": "24e26468d79429cdb16b48dd84a1ef9af71b8706df15b57ba564b3669d0cb9a5",
+              "raw.log": "40ea45777825775192caef8f8565385543a03ad5644b466e240cb0db9932a10c",
+              "poll-1.txt": "fbcc1d4e97e4ff46171d571cc7a910b601635843de0a62b448a616ed0d0e0ac0",
+              "poll-2.txt": "87cd0975c351148a7fc6dc5fda6ac0d081ac2dd8a1f759172e6f9ca83207c61f"
+            }
+          },
+          "arm-c": {
+            "view": "raw",
+            "files": {
+              "task.md": "24e26468d79429cdb16b48dd84a1ef9af71b8706df15b57ba564b3669d0cb9a5",
+              "raw.log": "40ea45777825775192caef8f8565385543a03ad5644b466e240cb0db9932a10c",
+              "poll-1.txt": "c35b5d0218b4bf25c83d36aa12bd585ae05cc42b9540eb9f4f033ddd72beb7c5",
+              "poll-2.txt": "08f5043dea9e339f6688f0730d94eff8b838b8422ff7074b21a7fd61781cbdaa"
+            }
+          }
+        }
+      },
+      {
+        "id": "rootly-status",
+        "source": "rootly/apache_access",
+        "source_start_record": 4264,
+        "source_end_record": 4775,
+        "source_sha256": "096a471f5d224047a325556430cc93a000264309befb53da6b560cdd6694ae8c",
+        "expected": {
+          "status_codes": [
+            200,
+            301
+          ],
+          "last_status": 200,
+          "last_timestamp": "29/Jan/2025:16:34:38 +0000"
+        },
+        "arms": {
+          "arm-a": {
+            "view": "current",
+            "files": {
+              "task.md": "b440d71ae94075ce7fc5065a2ddc92336abe7bc2a027a5cb9fd72b497a0b112f",
+              "raw.log": "c9f73dc5242feba42b34813def83e37cd12af01f050490f15ac2c33f2c65d663",
+              "poll-1.txt": "ad8bcaf93c6c52d63a4710ed4b4e8f9cd4218b6d3378e3260bc36b56a0a8d1b0",
+              "poll-2.txt": "e14f7ef5d66b48c26a5434a22408e5748e86f1dd19e4cb9933c65a828935a31f"
+            }
+          },
+          "arm-b": {
+            "view": "raw",
+            "files": {
+              "task.md": "b440d71ae94075ce7fc5065a2ddc92336abe7bc2a027a5cb9fd72b497a0b112f",
+              "raw.log": "c9f73dc5242feba42b34813def83e37cd12af01f050490f15ac2c33f2c65d663",
+              "poll-1.txt": "97fc1a74e90c5ace3462bcb600229ab5b2df7909c4a0d8393a2747fb34ad35de",
+              "poll-2.txt": "62f838f6a4166663a02d01d17b401764802a9a4336a7bcf3f365f056a00e5401"
+            }
+          },
+          "arm-c": {
+            "view": "baseline",
+            "files": {
+              "task.md": "b440d71ae94075ce7fc5065a2ddc92336abe7bc2a027a5cb9fd72b497a0b112f",
+              "raw.log": "c9f73dc5242feba42b34813def83e37cd12af01f050490f15ac2c33f2c65d663",
+              "poll-1.txt": "1159d53a1552bc174386563033e000e3ae23b3f258a2aca5dddea6b4278f3646",
+              "poll-2.txt": "f6f449d734e2f52e55cc31e1b6187e2bb67580913c12338ffa6cf876433354fa"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "protocol": "Nine fresh blinded agents, one per case/arm; fixed 512-record natural episodes; same guidance, start with later poll; reader-ledger payload accounting. Rootly deliveries truncated by tools and all three runs excluded from correctness/cost comparisons despite matching answers. Emitted tokens are not billed or necessarily delivered tokens. No population-level inference.",
+  "receipts_sha256": "2842c4a4300d1ab55188ec1cd23df75695f3338cac17110ab83752ed13061525",
+  "scorer_sha256": "3c6007280f78c028511afcc19d23e023f6184ec7630299c1686c7b6ea3826257",
+  "tokenizer": {
+    "package": "tiktoken 0.13.0",
+    "encoding": "o200k_base",
+    "scope": "whole emitted reader payloads including framing and rereads; truncated cases excluded from comparative totals; excludes tool wrappers, launch prompts, reasoning, and answers"
+  },
+  "results": [
+    {
+      "case": "rcaeval-payment",
+      "arm": "arm-a",
+      "answers": {
+        "conversion_container": "currencyservice",
+        "latest_conversion_timestamp": "2024-01-19T09:37:13Z",
+        "last_payment_transaction_id": "931246eb-acd4-4c1e-aafe-d29f326aab54"
+      },
+      "evidence": "Poll-2 records currencyservice conversion successes through 2024-01-19T09:37:13Z. Poll-1 records the checkoutservice payment transaction at 2024-01-19T09:37:09Z; neither poll contains a later payment transaction.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt",
+        "poll-1.txt"
+      ],
+      "delivery_complete": true,
+      "view": "raw",
+      "reads": [
+        {
+          "file": "task.md",
+          "file_sha256": "f849d732e7a17b1c0a0b9989c375123d4be59bb2a03e588cec13a4ebbc8c6e16",
+          "payload_sha256": "6c85fa64fbe25358a048ebedb24f5d73c4d2ef661976d27606f930877fa50e31",
+          "payload_bytes": 1382,
+          "emitted_tokens": 273
+        },
+        {
+          "file": "poll-2.txt",
+          "file_sha256": "50044e56385147382baedeaf2e471225e061cf5f5d6327977165dcb752c427ca",
+          "payload_sha256": "2708fa819326e737049d557e72a9bfd140e341cd9902369be8fd14c2d3bf0659",
+          "payload_bytes": 21102,
+          "emitted_tokens": 7095
+        },
+        {
+          "file": "poll-1.txt",
+          "file_sha256": "b42c7e9c5e0a0961fbf080dbd7e41a4c70d3135b695f6434af5651dee63c27b6",
+          "payload_sha256": "083e4332119e6786608ca898405847eaf7b2d1ed81b960bff452dfe3b436b4d0",
+          "payload_bytes": 21831,
+          "emitted_tokens": 7480
+        }
+      ],
+      "answers_match": true,
+      "emitted_tokens": 14848
+    },
+    {
+      "case": "rcaeval-payment",
+      "arm": "arm-b",
+      "answers": {
+        "conversion_container": "currencyservice",
+        "latest_conversion_timestamp": "2024-01-19T09:37:13Z",
+        "last_payment_transaction_id": "931246eb-acd4-4c1e-aafe-d29f326aab54"
+      },
+      "evidence": "Poll 2 ends with currencyservice conversion successes at 2024-01-19T09:37:13Z, including three additional similar occurrences in 0s. Poll 1 records checkoutservice's payment transaction at 2024-01-19T09:37:09Z; neither poll contains a later payment transaction.",
+      "review_limitation": "Latest timestamp matches source, but three final adjacent event timestamps are hidden and raw evidence was not retrieved; exact latest timestamp recovery is unproven.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt",
+        "poll-1.txt"
+      ],
+      "delivery_complete": true,
+      "view": "baseline",
+      "reads": [
+        {
+          "file": "task.md",
+          "file_sha256": "f849d732e7a17b1c0a0b9989c375123d4be59bb2a03e588cec13a4ebbc8c6e16",
+          "payload_sha256": "6c85fa64fbe25358a048ebedb24f5d73c4d2ef661976d27606f930877fa50e31",
+          "payload_bytes": 1382,
+          "emitted_tokens": 273
+        },
+        {
+          "file": "poll-2.txt",
+          "file_sha256": "5f6f25177d96b67ef17cd59e240fea801e12544ee43baf8aa2122d5598d1fded",
+          "payload_sha256": "9707b622c23f2a3701287652e72785e74b43b4cefe63c0351f1be6e7e7ad6d9e",
+          "payload_bytes": 18325,
+          "emitted_tokens": 6329
+        },
+        {
+          "file": "poll-1.txt",
+          "file_sha256": "4d0c7b7700704b96df7a354ab3c1e7a563a9450d5f2365dfe5193069a3eb3a65",
+          "payload_sha256": "99b2d18e14179b01c5522f6a1fd33d6ab0a10af57b767093b97ef32afbe2adbc",
+          "payload_bytes": 19102,
+          "emitted_tokens": 6712
+        }
+      ],
+      "answers_match": true,
+      "emitted_tokens": 13314
+    },
+    {
+      "case": "rcaeval-payment",
+      "arm": "arm-c",
+      "answers": {
+        "conversion_container": "currencyservice",
+        "latest_conversion_timestamp": "2024-01-19T09:37:13Z",
+        "last_payment_transaction_id": "931246eb-acd4-4c1e-aafe-d29f326aab54"
+      },
+      "evidence": "Poll 2 defines exemplar #42 as currencyservice conversion request successful and records its latest repeats at 2024-01-19T09:37:13Z. Poll 1 contains the checkoutservice payment transaction at 2024-01-19T09:37:09Z; neither poll contains a later payment transaction.",
+      "review_limitation": "Latest timestamp matches source, but three final adjacent event timestamps are hidden and raw evidence was not retrieved; exact latest timestamp recovery is unproven.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt",
+        "poll-1.txt"
+      ],
+      "delivery_complete": true,
+      "view": "current",
+      "reads": [
+        {
+          "file": "task.md",
+          "file_sha256": "f849d732e7a17b1c0a0b9989c375123d4be59bb2a03e588cec13a4ebbc8c6e16",
+          "payload_sha256": "6c85fa64fbe25358a048ebedb24f5d73c4d2ef661976d27606f930877fa50e31",
+          "payload_bytes": 1382,
+          "emitted_tokens": 273
+        },
+        {
+          "file": "poll-2.txt",
+          "file_sha256": "7d574db8d7a16eaff6e5ffd3b297b5c795d3f3a00001b2e749615914205f1a21",
+          "payload_sha256": "5a008b627f31db7df606c31613fd0cc885ff08d05f13d5f22a6a576e94d6d13f",
+          "payload_bytes": 14757,
+          "emitted_tokens": 6498
+        },
+        {
+          "file": "poll-1.txt",
+          "file_sha256": "9302457deaacdd4f90b085df5ce1ce6f1365de380ac0fac11942624d938acd0f",
+          "payload_sha256": "b26c8f2f6a8db7ba1169ff300f630dcb196ffe583ceb3a4ab3f1ac96d8ed60ff",
+          "payload_bytes": 16043,
+          "emitted_tokens": 6885
+        }
+      ],
+      "answers_match": true,
+      "emitted_tokens": 13656
+    },
+    {
+      "case": "logdx-network",
+      "arm": "arm-a",
+      "answers": {
+        "failed_test": "tests/functional/test_truststore.py::test_no_truststore_can_install[GitHub]",
+        "remote_host": "github.com",
+        "http_status": 502,
+        "reruns": 3,
+        "final_exit_code": 1
+      },
+      "evidence": "Captured stderr reports github.com exhausted retries because of repeated HTTP 502 responses. The final test summary names the failed test and reports 3 reruns. The process completion reports exit code 1.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt"
+      ],
+      "delivery_complete": true,
+      "view": "baseline",
+      "reads": [
+        {
+          "file": "task.md",
+          "file_sha256": "24e26468d79429cdb16b48dd84a1ef9af71b8706df15b57ba564b3669d0cb9a5",
+          "payload_sha256": "d13d96199225dbbc66edeefda0eec8f30d94e779257b03ef08b8a18330a94e88",
+          "payload_bytes": 1333,
+          "emitted_tokens": 275
+        },
+        {
+          "file": "poll-2.txt",
+          "file_sha256": "21312f793d24d90f0007bd78404abda89f9966a1aa4dc55408fbdf393e6746ec",
+          "payload_sha256": "849745f7cc82e61e5c7564a9ac97b04aeffd30a2837d8dd48a4dcdf798365594",
+          "payload_bytes": 28971,
+          "emitted_tokens": 11744
+        }
+      ],
+      "answers_match": true,
+      "emitted_tokens": 12019
+    },
+    {
+      "case": "logdx-network",
+      "arm": "arm-b",
+      "answers": {
+        "failed_test": "tests/functional/test_truststore.py::test_no_truststore_can_install[GitHub]",
+        "remote_host": "github.com",
+        "http_status": 502,
+        "reruns": 3,
+        "final_exit_code": 1
+      },
+      "evidence": "The FAILED summary names the GitHub truststore installation test. Its captured stderr reports github.com exhausting retries due to too many 502 responses. The final test summary reports 3 rerun, and the process completed with exit code 1.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt"
+      ],
+      "delivery_complete": true,
+      "view": "current",
+      "reads": [
+        {
+          "file": "task.md",
+          "file_sha256": "24e26468d79429cdb16b48dd84a1ef9af71b8706df15b57ba564b3669d0cb9a5",
+          "payload_sha256": "d13d96199225dbbc66edeefda0eec8f30d94e779257b03ef08b8a18330a94e88",
+          "payload_bytes": 1333,
+          "emitted_tokens": 275
+        },
+        {
+          "file": "poll-2.txt",
+          "file_sha256": "87cd0975c351148a7fc6dc5fda6ac0d081ac2dd8a1f759172e6f9ca83207c61f",
+          "payload_sha256": "c0f8de7b6c78cdc25915fc6b11cc40f2933b0b1e43f3e4128012c31c6e9e1052",
+          "payload_bytes": 28058,
+          "emitted_tokens": 11607
+        }
+      ],
+      "answers_match": true,
+      "emitted_tokens": 11882
+    },
+    {
+      "case": "logdx-network",
+      "arm": "arm-c",
+      "answers": {
+        "failed_test": "tests/functional/test_truststore.py::test_no_truststore_can_install[GitHub]",
+        "remote_host": "github.com",
+        "http_status": 502,
+        "reruns": 3,
+        "final_exit_code": 1
+      },
+      "evidence": "Captured stderr reports exhausted retries against github.com caused by too many 502 responses. The final test summary names the failed test and reports 3 rerun; the process completion records exit code 1.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt"
+      ],
+      "delivery_complete": true,
+      "view": "raw",
+      "reads": [
+        {
+          "file": "task.md",
+          "file_sha256": "24e26468d79429cdb16b48dd84a1ef9af71b8706df15b57ba564b3669d0cb9a5",
+          "payload_sha256": "d13d96199225dbbc66edeefda0eec8f30d94e779257b03ef08b8a18330a94e88",
+          "payload_bytes": 1333,
+          "emitted_tokens": 275
+        },
+        {
+          "file": "poll-2.txt",
+          "file_sha256": "08f5043dea9e339f6688f0730d94eff8b838b8422ff7074b21a7fd61781cbdaa",
+          "payload_sha256": "3bc896d8965afc42d08fdf8b23762d83c1ddec49df7ac00b2a77e8efc80f1c8a",
+          "payload_bytes": 29393,
+          "emitted_tokens": 11914
+        }
+      ],
+      "answers_match": true,
+      "emitted_tokens": 12189
+    },
+    {
+      "case": "rootly-status",
+      "arm": "arm-a",
+      "answers": {
+        "status_codes": [
+          200,
+          301
+        ],
+        "last_status": 200,
+        "last_timestamp": "29/Jan/2025:16:34:38 +0000"
+      },
+      "evidence": "In poll-2, exact '/' requests show statuses 200 and 301. The last matching arrival is 52.167.144.228 requesting GET / HTTP/1.1 at 29/Jan/2025:16:34:38 +0000, returning 200. Requests containing query strings or other paths were excluded. raw.log was also requested, but its tool output was truncated.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt",
+        "raw.log"
+      ],
+      "delivery_complete": false,
+      "view": "current",
+      "reads": [
+        {
+          "file": "task.md",
+          "file_sha256": "b440d71ae94075ce7fc5065a2ddc92336abe7bc2a027a5cb9fd72b497a0b112f",
+          "payload_sha256": "6242c0c41e0a689a63016387ef888aa2dfdc32128f2c1f4359d2c083dd1e6006",
+          "payload_bytes": 1398,
+          "emitted_tokens": 283
+        },
+        {
+          "file": "poll-2.txt",
+          "file_sha256": "e14f7ef5d66b48c26a5434a22408e5748e86f1dd19e4cb9933c65a828935a31f",
+          "payload_sha256": "809b1541169cc7dd92750e4dfbf965212ef09e17719f0a7f217919aeb517b72c",
+          "payload_bytes": 45512,
+          "emitted_tokens": 19261
+        },
+        {
+          "file": "raw.log",
+          "file_sha256": "c9f73dc5242feba42b34813def83e37cd12af01f050490f15ac2c33f2c65d663",
+          "payload_sha256": "091a63bc7a62a89f1a31296ba23bdca2cbe05aa65f0ab49c0fdc38f84b9af6d2",
+          "payload_bytes": 99157,
+          "emitted_tokens": 43052
+        }
+      ],
+      "answers_match": true,
+      "emitted_tokens": 62596
+    },
+    {
+      "case": "rootly-status",
+      "arm": "arm-b",
+      "answers": {
+        "status_codes": [
+          200,
+          301
+        ],
+        "last_status": 200,
+        "last_timestamp": "29/Jan/2025:16:34:38 +0000"
+      },
+      "evidence": "The 12 exact-root requests in poll-2 have statuses 200 and 301. The final matching request in arrival order is GET / HTTP/1.1 from 52.167.144.228, returning 200 at 29/Jan/2025:16:34:38 +0000. Query strings and other paths were excluded. Repeated the poll-2 read to recover evidence obscured by display truncation.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt",
+        "poll-2.txt"
+      ],
+      "delivery_complete": false,
+      "view": "raw",
+      "reads": [
+        {
+          "file": "task.md",
+          "file_sha256": "b440d71ae94075ce7fc5065a2ddc92336abe7bc2a027a5cb9fd72b497a0b112f",
+          "payload_sha256": "6242c0c41e0a689a63016387ef888aa2dfdc32128f2c1f4359d2c083dd1e6006",
+          "payload_bytes": 1398,
+          "emitted_tokens": 283
+        },
+        {
+          "file": "poll-2.txt",
+          "file_sha256": "62f838f6a4166663a02d01d17b401764802a9a4336a7bcf3f365f056a00e5401",
+          "payload_sha256": "56a36610f0e77234131be44912a42c9a9122dd83d792a2c6f62020d0973fcae6",
+          "payload_bytes": 54223,
+          "emitted_tokens": 23013
+        },
+        {
+          "file": "poll-2.txt",
+          "file_sha256": "62f838f6a4166663a02d01d17b401764802a9a4336a7bcf3f365f056a00e5401",
+          "payload_sha256": "56a36610f0e77234131be44912a42c9a9122dd83d792a2c6f62020d0973fcae6",
+          "payload_bytes": 54223,
+          "emitted_tokens": 23013
+        }
+      ],
+      "answers_match": true,
+      "emitted_tokens": 46309
+    },
+    {
+      "case": "rootly-status",
+      "arm": "arm-c",
+      "answers": {
+        "status_codes": [
+          200,
+          301
+        ],
+        "last_status": 200,
+        "last_timestamp": "29/Jan/2025:16:34:38 +0000"
+      },
+      "evidence": "Poll-2 shows exact '/' requests returning 200 and 301. The last matching arrival is 52.167.144.228 requesting 'GET / HTTP/1.1' at 29/Jan/2025:16:34:38 +0000 with status 200. Query-string requests and other paths were excluded. The raw.log read was partially truncated.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt",
+        "raw.log"
+      ],
+      "delivery_complete": false,
+      "view": "baseline",
+      "reads": [
+        {
+          "file": "task.md",
+          "file_sha256": "b440d71ae94075ce7fc5065a2ddc92336abe7bc2a027a5cb9fd72b497a0b112f",
+          "payload_sha256": "6242c0c41e0a689a63016387ef888aa2dfdc32128f2c1f4359d2c083dd1e6006",
+          "payload_bytes": 1398,
+          "emitted_tokens": 283
+        },
+        {
+          "file": "poll-2.txt",
+          "file_sha256": "f6f449d734e2f52e55cc31e1b6187e2bb67580913c12338ffa6cf876433354fa",
+          "payload_sha256": "071c333da497be5685127b177c1dedd2459f7bfa893dab0619896b446f90e943",
+          "payload_bytes": 45499,
+          "emitted_tokens": 19254
+        },
+        {
+          "file": "raw.log",
+          "file_sha256": "c9f73dc5242feba42b34813def83e37cd12af01f050490f15ac2c33f2c65d663",
+          "payload_sha256": "091a63bc7a62a89f1a31296ba23bdca2cbe05aa65f0ab49c0fdc38f84b9af6d2",
+          "payload_bytes": 99157,
+          "emitted_tokens": 43052
+        }
+      ],
+      "answers_match": true,
+      "emitted_tokens": 62589
+    }
+  ],
+  "complete_cases": [
+    "rcaeval-payment",
+    "logdx-network"
+  ],
+  "complete_case_emitted_tokens": {
+    "raw": 27037,
+    "baseline": 25333,
+    "current": 25538
+  }
+}

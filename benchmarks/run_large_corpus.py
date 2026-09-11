@@ -251,7 +251,8 @@ class CountingWriter:
         self.characters += len(text)
         self.bytes += len(text.encode("utf-8"))
         self.newlines += text.count("\n")
-        if text == self.current_printable + "\n":
+        full_record = self.current_printable + "\n"
+        if text == full_record:
             self.units.update(self.current_units)
         return len(text)
 
@@ -374,10 +375,11 @@ def evaluate_dataset(
                     qurtail_started = time.perf_counter()
                     suppressed = tail.process(text)
                     qurtail_seconds += time.perf_counter() - qurtail_started
-                    if suppressed and truth.unit == "line":
-                        # An exact count represents repeated line occurrences. Stable
-                        # block, application, and instance identifiers need a full
-                        # visible record before they count as retained evidence.
+                    if (suppressed and truth.unit == "line"
+                            and (qurtail_options or {}).get("interleaving", True) is False):
+                        # Adjacent-only counts identify the repeated exemplar.
+                        # Mixed counts cannot identify hidden anomalous occurrences.
+                        # Stable identifiers still require a full visible record.
                         writer.units.update(units)
                 if remaining is not None:
                     remaining -= 1

@@ -36,6 +36,7 @@ class Episode:
     lines: tuple[str, ...]
     required_blocks: tuple[tuple[str, ...], ...]
     repetitive: bool
+    interleaving: bool = True
 
 
 def _timestamp(second: int) -> str:
@@ -182,6 +183,7 @@ def _resumed_pattern_episode() -> Episode:
         lines=before + (failure,) + after,
         required_blocks=((failure,), (after[0],)),
         repetitive=True,
+        interleaving=False,
     )
 
 
@@ -258,10 +260,10 @@ def _raw_output(lines: tuple[str, ...]) -> str:
     return "".join(line + "\n" for line in lines)
 
 
-def _qurtail_output(lines: tuple[str, ...]) -> str:
+def _qurtail_output(lines: tuple[str, ...], *, interleaving: bool = True) -> str:
     """Render one finite episode through the production reducer."""
     output = StringIO()
-    reducer = _StreamReducer(output, dot_every=10)
+    reducer = _StreamReducer(output, dot_every=10, interleaving=interleaving)
     for line in lines:
         reducer.process(line)
     reducer.finish()
@@ -307,30 +309,36 @@ def evaluate_episode(
     """Measure token cost and required evidence for one monitoring episode."""
     setup = (
         SKILL_PATH.read_text(encoding="utf-8")
-        + "\n$ qurtail -F -n 50 app.log\n"
+        + "\n$ qurtail -F -n 50 "
+        + ("" if episode.interleaving else "--no-interleaving ")
+        + "app.log\n"
         + episode.task
         + "\n"
     )
     raw = _raw_output(episode.lines)
-    compact = _qurtail_output(episode.lines)
+    compact = _qurtail_output(episode.lines, interleaving=episode.interleaving)
     raw_tokens = count_tokens(setup + raw)
     compact_tokens = count_tokens(setup + compact)
     reduction = 0.0 if raw_tokens == 0 else 1 - compact_tokens / raw_tokens
     retained = all(
         _block_visible(compact, block) for block in episode.required_blocks
     )
+    default_compact = compact if episode.interleaving else _qurtail_output(episode.lines)
     return {
         "slug": episode.slug,
         "category": episode.category,
         "task": episode.task,
         "expected_decision": episode.expected_decision,
         "repetitive": episode.repetitive,
+        "interleaving": episode.interleaving,
         "input_records": len(episode.lines),
         "raw_tokens": raw_tokens,
         "qurtail_tokens": compact_tokens,
         "token_reduction": reduction,
         "required_blocks": len(episode.required_blocks),
         "all_required_blocks_visible": retained,
+        "default_all_required_blocks_visible": all(
+            _block_visible(default_compact, block) for block in episode.required_blocks),
     }
 
 
@@ -356,7 +364,7 @@ def evaluate_suite(
     )
     logical_clock_replay = evaluate_logical_clock_replay()
     gates = {
-        "all_required_blocks_visible": all_evidence_visible,
+        "all_required_blocks_visible_in_selected_modes": all_evidence_visible,
         "median_repetitive_token_reduction_at_least_80_percent": (
             median_reduction >= 0.80
         ),

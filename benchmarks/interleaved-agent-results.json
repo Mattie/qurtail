@@ -1,0 +1,366 @@
+{
+  "schema_version": 1,
+  "protocol": "Six fresh blinded agents, one per fixed case/view; current shared dot/count guidance identical for both views. Whole-file evidence access through read_external_evidence.py, ordered ledger verified by scorer. All six answers matched and evidence supports requested fields; no output truncation. Three purposive tasks do not establish population-level cost savings. Costs count task/evidence file contents and rereads; exclude reader headers, launcher prompts, platform/tool wrappers, reasoning, and answers.",
+  "grading_scope": "Verified complete reads and answer-key equality. Evidence grounding is reviewed manually.",
+  "fixture_manifest": {
+    "schema_version": 1,
+    "qurtail_sha256": "c7f05454d25d54626dd1eb25627a0c8fce2432781b84d58ec121ae544b4ec45b",
+    "generator_sha256": "10a98729433e934f0b27b31e3f57e8f53a34c3bc50c1223cb7c6283eddefd9fe",
+    "cases": [
+      {
+        "id": "peers-and-backoff",
+        "records": 120,
+        "split_after_source_record": 60,
+        "initial_files": [
+          "poll-1.txt",
+          "poll-2.txt"
+        ],
+        "expected": {
+          "failed_peers": [
+            2,
+            3
+          ],
+          "final_timeout_ms": 60000
+        },
+        "arms": {
+          "arm-a": {
+            "view": "raw",
+            "files": {
+              "task.md": "1aa93bc2c843b494b522796034e72b5da46858bf8280c91980db4fd1d40418af",
+              "poll-1.txt": "fbd2c2c4d0e125862cc85cd3589dec904ada2a9ae5261c730b1da2a6886b26a1",
+              "poll-2.txt": "47cd22f60fab2e3c97b648c42f111cbc6a95e16d71023ee63818053c9c89e0a8",
+              "raw.log": "982586757bf2a54480e6155ea3a8ef433b5a402214a921313db728ab11db14a4"
+            }
+          },
+          "arm-b": {
+            "view": "compact",
+            "files": {
+              "task.md": "1aa93bc2c843b494b522796034e72b5da46858bf8280c91980db4fd1d40418af",
+              "poll-1.txt": "c3d0477fbba3add3ad403ae6b04d257f2c2ebc29c45074639614d640650d444e",
+              "poll-2.txt": "ef2bc7a963c73a77ebca6214f94d3fba7ec299418a40b8ebddccb994cdc93880",
+              "raw.log": "982586757bf2a54480e6155ea3a8ef433b5a402214a921313db728ab11db14a4"
+            }
+          }
+        }
+      },
+      {
+        "id": "recovery-and-raw-id",
+        "records": 30,
+        "split_after_source_record": 24,
+        "initial_files": [
+          "poll-1.txt",
+          "poll-2.txt"
+        ],
+        "expected": {
+          "recovered": true,
+          "first_recovery_timestamp": "2026-09-10T12:00:25Z",
+          "final_worker_a_request_id": "retry-3"
+        },
+        "arms": {
+          "arm-a": {
+            "view": "compact",
+            "files": {
+              "task.md": "62a2c96bb31a010061cee6d20ef0099b1bbbff4fd7b8e1f215539d6408f00cab",
+              "poll-1.txt": "bc05fb20adb156107cda6094a86226a97dca2cea0584d9d89168781b3991bd36",
+              "poll-2.txt": "c9694411c58e79146f9f91047f74fadce80f3400297d151f1d1c839cb5303f8a",
+              "raw.log": "d4a1da75af920280dd623815e70d0bda742f7f58a4270f90466ac58274f069f6"
+            }
+          },
+          "arm-b": {
+            "view": "raw",
+            "files": {
+              "task.md": "62a2c96bb31a010061cee6d20ef0099b1bbbff4fd7b8e1f215539d6408f00cab",
+              "poll-1.txt": "33ad19506cfc90a0ee5c2612aedcf21b3fd10b895fc2ee95030b2100a1565c62",
+              "poll-2.txt": "6e81db78fb57b6d7130a45db603f882d01407c6266211f4562b50de089b69bfc",
+              "raw.log": "d4a1da75af920280dd623815e70d0bda742f7f58a4270f90466ac58274f069f6"
+            }
+          }
+        }
+      },
+      {
+        "id": "later-poll-without-anchors",
+        "records": 64,
+        "split_after_source_record": 31,
+        "initial_files": [
+          "poll-2.txt"
+        ],
+        "expected": {
+          "failing_peer": 3,
+          "recovered_at_end": true
+        },
+        "arms": {
+          "arm-a": {
+            "view": "raw",
+            "files": {
+              "task.md": "0930cefe33fae39266ae3b15c2c0b0c5e9d6c924559a95e8efcb7beee5f4024f",
+              "poll-1.txt": "45cfc2750c5baabb92cce44dac84d0dffa3e7c0f8240eb695a913eb1281a03f5",
+              "poll-2.txt": "7701af022b41f255a7a2dcad8a1b3c953f8f502c39391fd1fde27f7575ca6519",
+              "raw.log": "c9cd01dce6ff912219ac12b15d1513be0a26e9c6a9e495c1cf4bd9d36ad85d99"
+            }
+          },
+          "arm-b": {
+            "view": "compact",
+            "files": {
+              "task.md": "0930cefe33fae39266ae3b15c2c0b0c5e9d6c924559a95e8efcb7beee5f4024f",
+              "poll-1.txt": "06b4284391b898f69729a1edd89a9d7e54faa261a6f3c6efef493523a6d65f1c",
+              "poll-2.txt": "3cca1dfc5c0214d10b49aff86504fb0a7c3d1ed49cd03a510c47e6adca0acb2b",
+              "raw.log": "c9cd01dce6ff912219ac12b15d1513be0a26e9c6a9e495c1cf4bd9d36ad85d99"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "receipts_sha256": "5b5cb29e0ca0dac9bbe8bc8b379013c9ffd9ccfc3e9b36ba0975f1ffc3f422a9",
+  "scorer_sha256": "d6603716eba9b1b73402edf12874e420dd490d2b3013f550a65d9e3d894aab09",
+  "reader_sha256": "ecf237f08a9a4bed1c65d1c20763379c81b72255afb92c0543d372bb82cfb45b",
+  "tokenizer": {
+    "package": "tiktoken 0.13.0",
+    "encoding": "o200k_base",
+    "scope": "sum of each whole task/evidence file read, including rereads"
+  },
+  "results": [
+    {
+      "case": "peers-and-backoff",
+      "arm": "arm-a",
+      "answers": {
+        "failed_peers": [
+          2,
+          3
+        ],
+        "final_timeout_ms": 60000
+      },
+      "evidence": "poll-2.txt reports 'cannot connect to peer 2' at 2026-09-10T12:01:57Z and 'cannot connect to peer 3' at 2026-09-10T12:01:58Z. The latest entry, at 2026-09-10T12:01:59Z, reports 'notification timeout: 60000'.",
+      "files_read": [
+        "task.md",
+        "poll-1.txt",
+        "poll-2.txt"
+      ],
+      "tool_calls": 3,
+      "output_truncated": false,
+      "view": "raw",
+      "reads": [
+        {
+          "file": "task.md",
+          "sha256": "1aa93bc2c843b494b522796034e72b5da46858bf8280c91980db4fd1d40418af",
+          "tokens": 224
+        },
+        {
+          "file": "poll-1.txt",
+          "sha256": "fbd2c2c4d0e125862cc85cd3589dec904ada2a9ae5261c730b1da2a6886b26a1",
+          "tokens": 1812
+        },
+        {
+          "file": "poll-2.txt",
+          "sha256": "47cd22f60fab2e3c97b648c42f111cbc6a95e16d71023ee63818053c9c89e0a8",
+          "tokens": 1820
+        }
+      ],
+      "task_and_evidence_tokens": 3856,
+      "answers_match": true
+    },
+    {
+      "case": "peers-and-backoff",
+      "arm": "arm-b",
+      "answers": {
+        "failed_peers": [
+          2,
+          3
+        ],
+        "final_timeout_ms": 60000
+      },
+      "evidence": "raw.log reports 'cannot connect to peer 2' at 2026-09-10T12:01:57Z and 'cannot connect to peer 3' at 12:01:58Z. The latest timeout entry is 'notification timeout: 60000' at 12:01:59Z.",
+      "files_read": [
+        "task.md",
+        "poll-1.txt",
+        "poll-2.txt",
+        "raw.log"
+      ],
+      "tool_calls": 4,
+      "output_truncated": false,
+      "view": "compact",
+      "reads": [
+        {
+          "file": "task.md",
+          "sha256": "1aa93bc2c843b494b522796034e72b5da46858bf8280c91980db4fd1d40418af",
+          "tokens": 224
+        },
+        {
+          "file": "poll-1.txt",
+          "sha256": "c3d0477fbba3add3ad403ae6b04d257f2c2ebc29c45074639614d640650d444e",
+          "tokens": 214
+        },
+        {
+          "file": "poll-2.txt",
+          "sha256": "ef2bc7a963c73a77ebca6214f94d3fba7ec299418a40b8ebddccb994cdc93880",
+          "tokens": 131
+        },
+        {
+          "file": "raw.log",
+          "sha256": "982586757bf2a54480e6155ea3a8ef433b5a402214a921313db728ab11db14a4",
+          "tokens": 3632
+        }
+      ],
+      "task_and_evidence_tokens": 4201,
+      "answers_match": true
+    },
+    {
+      "case": "recovery-and-raw-id",
+      "arm": "arm-a",
+      "answers": {
+        "recovered": true,
+        "first_recovery_timestamp": "2026-09-10T12:00:25Z",
+        "final_worker_a_request_id": "retry-3"
+      },
+      "evidence": "raw.log records worker-a's connection refused failure at 2026-09-10T12:00:24Z, followed by its first successful refresh at 2026-09-10T12:00:25Z. Its final logged request is request_id=retry-3 at 2026-09-10T12:00:28Z.",
+      "files_read": [
+        "task.md",
+        "poll-1.txt",
+        "poll-2.txt",
+        "raw.log"
+      ],
+      "tool_calls": 4,
+      "output_truncated": false,
+      "view": "compact",
+      "reads": [
+        {
+          "file": "task.md",
+          "sha256": "62a2c96bb31a010061cee6d20ef0099b1bbbff4fd7b8e1f215539d6408f00cab",
+          "tokens": 248
+        },
+        {
+          "file": "poll-1.txt",
+          "sha256": "bc05fb20adb156107cda6094a86226a97dca2cea0584d9d89168781b3991bd36",
+          "tokens": 51
+        },
+        {
+          "file": "poll-2.txt",
+          "sha256": "c9694411c58e79146f9f91047f74fadce80f3400297d151f1d1c839cb5303f8a",
+          "tokens": 39
+        },
+        {
+          "file": "raw.log",
+          "sha256": "d4a1da75af920280dd623815e70d0bda742f7f58a4270f90466ac58274f069f6",
+          "tokens": 754
+        }
+      ],
+      "task_and_evidence_tokens": 1092,
+      "answers_match": true
+    },
+    {
+      "case": "recovery-and-raw-id",
+      "arm": "arm-b",
+      "answers": {
+        "recovered": true,
+        "first_recovery_timestamp": "2026-09-10T12:00:25Z",
+        "final_worker_a_request_id": "retry-3"
+      },
+      "evidence": "raw.log records worker-a connection refused at 2026-09-10T12:00:24Z, followed by a successful refresh at 2026-09-10T12:00:25Z. Its last worker-a entry is at 2026-09-10T12:00:28Z with request_id=retry-3.",
+      "files_read": [
+        "task.md",
+        "poll-1.txt",
+        "poll-2.txt",
+        "raw.log"
+      ],
+      "tool_calls": 4,
+      "output_truncated": false,
+      "view": "raw",
+      "reads": [
+        {
+          "file": "task.md",
+          "sha256": "62a2c96bb31a010061cee6d20ef0099b1bbbff4fd7b8e1f215539d6408f00cab",
+          "tokens": 248
+        },
+        {
+          "file": "poll-1.txt",
+          "sha256": "33ad19506cfc90a0ee5c2612aedcf21b3fd10b895fc2ee95030b2100a1565c62",
+          "tokens": 600
+        },
+        {
+          "file": "poll-2.txt",
+          "sha256": "6e81db78fb57b6d7130a45db603f882d01407c6266211f4562b50de089b69bfc",
+          "tokens": 154
+        },
+        {
+          "file": "raw.log",
+          "sha256": "d4a1da75af920280dd623815e70d0bda742f7f58a4270f90466ac58274f069f6",
+          "tokens": 754
+        }
+      ],
+      "task_and_evidence_tokens": 1756,
+      "answers_match": true
+    },
+    {
+      "case": "later-poll-without-anchors",
+      "arm": "arm-a",
+      "answers": {
+        "failing_peer": 3,
+        "recovered_at_end": true
+      },
+      "evidence": "Peer 3 has connection-refused failures, most recently at 2026-09-10T12:01:02Z. Its last observed state at 2026-09-10T12:01:03Z is \"healthy and accepting requests\".",
+      "files_read": [
+        "task.md",
+        "poll-2.txt"
+      ],
+      "tool_calls": 2,
+      "output_truncated": false,
+      "view": "raw",
+      "reads": [
+        {
+          "file": "task.md",
+          "sha256": "0930cefe33fae39266ae3b15c2c0b0c5e9d6c924559a95e8efcb7beee5f4024f",
+          "tokens": 225
+        },
+        {
+          "file": "poll-2.txt",
+          "sha256": "7701af022b41f255a7a2dcad8a1b3c953f8f502c39391fd1fde27f7575ca6519",
+          "tokens": 814
+        }
+      ],
+      "task_and_evidence_tokens": 1039,
+      "answers_match": true
+    },
+    {
+      "case": "later-poll-without-anchors",
+      "arm": "arm-b",
+      "answers": {
+        "failing_peer": 3,
+        "recovered_at_end": true
+      },
+      "evidence": "raw.log shows peer 3 failed with connection refused at 2026-09-10T12:01:02Z. Its last observed state at 2026-09-10T12:01:03Z is healthy and accepting requests.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt",
+        "raw.log"
+      ],
+      "tool_calls": 3,
+      "output_truncated": false,
+      "view": "compact",
+      "reads": [
+        {
+          "file": "task.md",
+          "sha256": "0930cefe33fae39266ae3b15c2c0b0c5e9d6c924559a95e8efcb7beee5f4024f",
+          "tokens": 225
+        },
+        {
+          "file": "poll-2.txt",
+          "sha256": "3cca1dfc5c0214d10b49aff86504fb0a7c3d1ed49cd03a510c47e6adca0acb2b",
+          "tokens": 8
+        },
+        {
+          "file": "raw.log",
+          "sha256": "c9cd01dce6ff912219ac12b15d1513be0a26e9c6a9e495c1cf4bd9d36ad85d99",
+          "tokens": 1580
+        }
+      ],
+      "task_and_evidence_tokens": 1813,
+      "answers_match": true
+    }
+  ],
+  "total_task_and_evidence_tokens": {
+    "raw": 6651,
+    "compact": 7106
+  },
+  "aggregate_token_reduction": -0.06841076529845136,
+  "passed": true
+}

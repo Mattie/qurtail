@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
-  "run_date": "2026-08-19",
+  "run_date": "2026-09-11",
   "run_environment": {
     "platform": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-glibc2.39",
     "python": "3.12.3"
   },
-  "qurtail_sha256": "1b165afe3ea936fb67aaec89b4ebaee095b0f7a672e1659026359e5ce3507e12",
+  "qurtail_sha256": "c7f05454d25d54626dd1eb25627a0c8fce2432781b84d58ec121ae544b4ec45b",
   "evaluator_sha256": {
     "benchmarks/large_corpus.py": "c9cf32d99dd8414f61f829cfbe8eaacb8cc2929c458ff28939f6e0515c26043f",
-    "benchmarks/run_large_corpus.py": "d1827ad2734a638c40e0074262f5de0a5a442fa7d1b60fb9d8f46e3d95e7f102"
+    "benchmarks/run_large_corpus.py": "dff1e60faae5a5ee98535fe63d2a131811d8f0a253e83147e4640fd6fe7aeba0"
   },
   "manifest_sha256": "30c4f6708ab0292976afe3ac9aa5aa849aef8974f27321c7b1b994a23349fab4",
   "corpus_index": {
@@ -68,9 +68,9 @@
       "available_anomaly_units": 16838,
       "expected_anomaly_units": 16838,
       "limit": null,
-      "elapsed_seconds": 133.61098389100516,
-      "baseline_scan_seconds": 55.48725098086288,
-      "qurtail_seconds": 78.12373291014228,
+      "elapsed_seconds": 149.34661158599192,
+      "baseline_scan_seconds": 63.31590256356867,
+      "qurtail_seconds": 86.03070902242325,
       "methods": {
         "raw": {
           "output_records": 11175629,

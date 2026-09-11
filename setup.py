@@ -1,4 +1,4 @@
-"""Setuptools hooks for producing a clean qurtail 1.0 wheel."""
+"""Setuptools hooks for producing a clean qurtail wheel."""
 
 from pathlib import Path
 

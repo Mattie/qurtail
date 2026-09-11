@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "qurtail_sha256": "be4fc1d43da2e628c68f50bc0b8d75ce75f79f54122d2c29bd7bf3e1ea25c7c5",
+  "evaluator_sha256": {
+    "benchmarks/run_interleaved.py": "9f5437c62c79e36e37964177da79deeb75579616399a811f38bc25f28d0d644d",
+    "benchmarks/run_large_corpus.py": "d9b9e2d5de8f3d5024e3afde4fb1d02ffa2a7bde969a6b3967caf8fc102608d7",
+    "benchmarks/large_corpus.py": "c9cf32d99dd8414f61f829cfbe8eaacb8cc2929c458ff28939f6e0515c26043f"
+  },
+  "manifest_sha256": "30c4f6708ab0292976afe3ac9aa5aa849aef8974f27321c7b1b994a23349fab4",
+  "baseline_sha256": "30fde29a4b1c49be20b5c8fc7b3228eb4607645a1a5a18dd1114d5ad7e98c3b5",
+  "tokenizer": {
+    "package": "tiktoken 0.13.0",
+    "encoding": "o200k_base",
+    "scope": "sum of complete logical records including LF; no platform or prompt framing"
+  },
+  "configuration": {
+    "dot_every": 10,
+    "clock": "constant zero; finite offline replay"
+  },
+  "results": [
+    {
+      "dataset": "loghub-zookeeper",
+      "source_revision": "dd61d0952749ee7963bde24220d1be5ede023033",
+      "files": [
+        {
+          "path": "loghub-zookeeper/Zookeeper.log",
+          "sha256": "5c793ff30e960e387845fa81e595977a9037bc4801ef67f6c3298622d5d4572a",
+          "views": {
+            "current": {
+              "records": 74380,
+              "full_records": 30585,
+              "anchors": 2264,
+              "references": 43503,
+              "adjacent_repeats": 292,
+              "decoded_input_bytes": 10352058,
+              "output_bytes": 6582343,
+              "byte_reduction": 0.3641512634492581,
+              "input_tokens": 4040099,
+              "output_tokens": 2897890,
+              "token_reduction": 0.28271807200764143,
+              "all_occurrences_accounted_for": true,
+              "elapsed_seconds": 2.317631682002684
+            },
+            "baseline": {
+              "records": 74380,
+              "full_records": 74088,
+              "anchors": 0,
+              "references": 0,
+              "adjacent_repeats": 292,
+              "decoded_input_bytes": 10352058,
+              "output_bytes": 10309448,
+              "byte_reduction": 0.004116089766885045,
+              "input_tokens": 4040099,
+              "output_tokens": 4023352,
+              "token_reduction": 0.004145195451893624,
+              "all_occurrences_accounted_for": true,
+              "elapsed_seconds": 2.0992100999865215
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset": "loghub-linux",
+      "source_revision": "dd61d0952749ee7963bde24220d1be5ede023033",
+      "files": [
+        {
+          "path": "loghub-linux/Linux.log",
+          "sha256": "b541078328bf5402c254e7e8971a95963c464858031889ff6e15b6d1a857d490",
+          "views": {
+            "current": {
+              "records": 25567,
+              "full_records": 24896,
+              "anchors": 446,
+              "references": 651,
+              "adjacent_repeats": 20,
+              "decoded_input_bytes": 2350166,
+              "output_bytes": 2336811,
+              "byte_reduction": 0.005682577315815118,
+              "input_tokens": 903636,
+              "output_tokens": 898505,
+              "token_reduction": 0.005678171299062895,
+              "all_occurrences_accounted_for": true,
+              "elapsed_seconds": 0.6354837410035543
+            },
+            "baseline": {
+              "records": 25567,
+              "full_records": 25547,
+              "anchors": 0,
+              "references": 0,
+              "adjacent_repeats": 20,
+              "decoded_input_bytes": 2350166,
+              "output_bytes": 2348817,
+              "byte_reduction": 0.0005740020066667961,
+              "input_tokens": 903636,
+              "output_tokens": 903194,
+              "token_reduction": 0.000489135005688146,
+              "all_occurrences_accounted_for": true,
+              "elapsed_seconds": 0.6056193520198576
+            }
+          }
+        }
+      ]
+    },
+    {
+      "dataset": "loghub-openssh",
+      "source_revision": "dd61d0952749ee7963bde24220d1be5ede023033",
+      "files": [
+        {
+          "path": "loghub-openssh/SSH.log",
+          "sha256": "89eee9e36c182722f9fadc6e5617a4818ffc66109e7e222b8f9e8b78fc3aa2f3",
+          "views": {
+            "current": {
+              "records": 655147,
+              "full_records": 646697,
+              "anchors": 2608,
+              "references": 8410,
+              "adjacent_repeats": 40,
+              "decoded_input_bytes": 72762361,
+              "output_bytes": 72324526,
+              "byte_reduction": 0.0060173281073163665,
+              "input_tokens": 27989011,
+              "output_tokens": 27858759,
+              "token_reduction": 0.004653683547446552,
+              "all_occurrences_accounted_for": true,
+              "elapsed_seconds": 19.3671393179975
+            },
+            "baseline": {
+              "records": 655147,
+              "full_records": 655107,
+              "anchors": 0,
+              "references": 0,
+              "adjacent_repeats": 40,
+              "decoded_input_bytes": 72762361,
+              "output_bytes": 72759306,
+              "byte_reduction": 4.198599328020247e-05,
+              "input_tokens": 27989011,
+              "output_tokens": 27987832,
+              "token_reduction": 4.212367489508928e-05,
+              "all_occurrences_accounted_for": true,
+              "elapsed_seconds": 17.414693693019217
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "gates": {
+    "zookeeper_decoded_byte_reduction_at_least_25_percent": true,
+    "all_occurrences_accounted_for": true
+  },
+  "passed": true
+}

@@ -406,7 +406,7 @@ class LargeCorpusBenchmarkTests(unittest.TestCase):
                 index_record,
                 corpus_root,
                 run_qurtail=True,
-                qurtail_options={"dot_every": 10},
+                qurtail_options={"dot_every": 10, "interleaving": False},
             )
 
             self.assertEqual(result["input_records"], 102)
@@ -422,6 +422,29 @@ class LargeCorpusBenchmarkTests(unittest.TestCase):
             )
             self.assertGreater(result["methods"]["qurtail"]["byte_reduction"], 0)
             self.assertGreater(result["qurtail_seconds"], 0)
+
+    def test_mixed_counts_do_not_credit_hidden_line_anomalies(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            dataset_root = root / "data" / "fixture"
+            dataset_root.mkdir(parents=True)
+            (dataset_root / "events.log").write_bytes(
+                b"- INFO heartbeat\nA1 ERROR disk failure\n- INFO heartbeat\n"
+                b"A1 ERROR disk failure\nA1 ERROR disk failure\n")
+            dataset = {"id": "fixture", "source_revision": "test",
+                       "ground_truth": {"kind": "inline-field", "unit": "line",
+                                        "field_index": 0, "normal_value": "-",
+                                        "expected_anomaly_units": 3}}
+            index = {"log_files": [{"path": "fixture/events.log"}]}
+            for options, retained in (({}, 1), ({"interleaving": False}, 3)):
+                with self.subTest(options=options):
+                    report = evaluate_dataset(dataset, index, root, run_qurtail=True,
+                                              qurtail_options=options)
+                    self.assertEqual(report["available_anomaly_units"], 3)
+                    self.assertEqual(report["methods"]["qurtail"]["retained_anomaly_units"], retained)
+                    self.assertEqual(report["methods"]["qurtail"]["anomaly_unit_recall"], retained / 3)
+                    self.assertEqual(report["release_gates"]["all_available_anomaly_units_retained"],
+                                     retained == 3)
 
     def test_suppressed_stable_identifiers_do_not_count_as_visible(self) -> None:
         first = "11111111-1111-1111-1111-111111111111"

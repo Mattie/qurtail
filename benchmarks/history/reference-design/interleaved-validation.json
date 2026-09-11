@@ -1,0 +1,280 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-10",
+  "qurtail_sha256": "be4fc1d43da2e628c68f50bc0b8d75ce75f79f54122d2c29bd7bf3e1ea25c7c5",
+  "platforms": {
+    "linux": {
+      "environment": "Ubuntu under WSL",
+      "tests_run": 135,
+      "tests_skipped": 0,
+      "tests_passed": true,
+      "installed_smoke_passed": true,
+      "performance": {
+        "schema_version": 1,
+        "record_count": 500000,
+        "memory_record_count": 100000,
+        "record_width": 256,
+        "dot_every": 1,
+        "timing_trials": 5,
+        "timing_samples": [
+          {
+            "framing_seconds": 0.13398818398127332,
+            "framing_cpu_seconds": 0.14887460000000008,
+            "qurtail_seconds": 0.6624580089992378,
+            "qurtail_cpu_seconds": 0.7360591999999999,
+            "framing_cpu_ratio": 4.944155685388908,
+            "first_record_seconds": 4.3001986341550946e-05
+          },
+          {
+            "framing_seconds": 0.1433149840158876,
+            "framing_cpu_seconds": 0.15923880000000024,
+            "qurtail_seconds": 0.6764693279983476,
+            "qurtail_cpu_seconds": 0.7516124000000002,
+            "framing_cpu_ratio": 4.720033057269956,
+            "first_record_seconds": 4.2379979277029634e-05
+          },
+          {
+            "framing_seconds": 0.13974844900076278,
+            "framing_cpu_seconds": 0.15527649999999982,
+            "qurtail_seconds": 0.6301783740054816,
+            "qurtail_cpu_seconds": 0.7001938000000001,
+            "framing_cpu_ratio": 4.50933528254437,
+            "first_record_seconds": 5.14069979544729e-05
+          },
+          {
+            "framing_seconds": 0.14517979600350372,
+            "framing_cpu_seconds": 0.16131099999999954,
+            "qurtail_seconds": 0.6185350260057021,
+            "qurtail_cpu_seconds": 0.6872560000000001,
+            "framing_cpu_ratio": 4.260441011462343,
+            "first_record_seconds": 3.347999881953001e-05
+          },
+          {
+            "framing_seconds": 0.1312176599749364,
+            "framing_cpu_seconds": 0.1457620000000004,
+            "qurtail_seconds": 0.6240280859929044,
+            "qurtail_cpu_seconds": 0.6933606000000001,
+            "framing_cpu_ratio": 4.7567994401833005,
+            "first_record_seconds": 3.4154014429077506e-05
+          }
+        ],
+        "framing_seconds": 0.13974844900076278,
+        "framing_cpu_seconds": 0.15527649999999982,
+        "qurtail_seconds": 0.6301783740054816,
+        "qurtail_cpu_seconds": 0.7001938000000001,
+        "total_framing_cpu_seconds": 0.7704629000000001,
+        "total_qurtail_cpu_seconds": 3.5684820000000004,
+        "records_per_second": 793426.1482537811,
+        "framing_cpu_ratio": 4.6316078295268985,
+        "peak_additional_bytes": 1982417,
+        "first_record_seconds": 5.14069979544729e-05,
+        "gates": {
+          "at_least_50000_records_per_second": true,
+          "peak_additional_memory_below_64_mib": true,
+          "first_record_below_100_ms": true
+        },
+        "passed": true
+      }
+    },
+    "windows": {
+      "environment": "Native Windows, isolated Python 3.12 environment and built wheel",
+      "tests_run": 135,
+      "tests_skipped": 4,
+      "tests_passed": true,
+      "installed_smoke_passed": true,
+      "performance": {
+        "schema_version": 1,
+        "record_count": 500000,
+        "memory_record_count": 100000,
+        "record_width": 256,
+        "dot_every": 1,
+        "timing_trials": 5,
+        "timing_samples": [
+          {
+            "framing_seconds": 0.2815549000224564,
+            "framing_cpu_seconds": 0.28125,
+            "qurtail_seconds": 1.0240521999949124,
+            "qurtail_cpu_seconds": 1.015625,
+            "framing_cpu_ratio": 3.611111111111111,
+            "first_record_seconds": 6.10999995842576e-05
+          },
+          {
+            "framing_seconds": 0.31458020000718534,
+            "framing_cpu_seconds": 0.328125,
+            "qurtail_seconds": 1.0662482999905478,
+            "qurtail_cpu_seconds": 1.0625,
+            "framing_cpu_ratio": 3.238095238095238,
+            "first_record_seconds": 5.199998850002885e-05
+          },
+          {
+            "framing_seconds": 0.3142223000177182,
+            "framing_cpu_seconds": 0.3125,
+            "qurtail_seconds": 1.036472199979471,
+            "qurtail_cpu_seconds": 1.03125,
+            "framing_cpu_ratio": 3.3,
+            "first_record_seconds": 4.6999979531392455e-05
+          },
+          {
+            "framing_seconds": 0.34834730002330616,
+            "framing_cpu_seconds": 0.34375,
+            "qurtail_seconds": 0.9514901000075042,
+            "qurtail_cpu_seconds": 0.9375,
+            "framing_cpu_ratio": 2.727272727272727,
+            "first_record_seconds": 4.099999205209315e-05
+          },
+          {
+            "framing_seconds": 0.3056808999972418,
+            "framing_cpu_seconds": 0.296875,
+            "qurtail_seconds": 1.0713049000187311,
+            "qurtail_cpu_seconds": 1.046875,
+            "framing_cpu_ratio": 3.526315789473684,
+            "first_record_seconds": 4.25000034738332e-05
+          }
+        ],
+        "framing_seconds": 0.3142223000177182,
+        "framing_cpu_seconds": 0.3125,
+        "qurtail_seconds": 1.036472199979471,
+        "qurtail_cpu_seconds": 1.03125,
+        "total_framing_cpu_seconds": 1.5625,
+        "total_qurtail_cpu_seconds": 5.09375,
+        "records_per_second": 482405.60625736346,
+        "framing_cpu_ratio": 3.26,
+        "peak_additional_bytes": 1982409,
+        "first_record_seconds": 6.10999995842576e-05,
+        "gates": {
+          "at_least_50000_records_per_second": true,
+          "peak_additional_memory_below_64_mib": true,
+          "first_record_below_100_ms": true
+        },
+        "passed": true
+      }
+    },
+    "macos": {
+      "tested": false,
+      "note": "Available in existing CI matrix; no push or workflow run performed."
+    }
+  },
+  "heldout": {
+    "schema_version": 1,
+    "episodes": [
+      {
+        "slug": "cache-refresh-failure",
+        "category": "error",
+        "task": "Monitor cache refreshes and explain why the refresh stopped.",
+        "expected_decision": "Investigate the refused cache connection.",
+        "repetitive": true,
+        "input_records": 601,
+        "raw_tokens": 14399,
+        "qurtail_tokens": 363,
+        "token_reduction": 0.9747899159663865,
+        "required_blocks": 1,
+        "all_required_blocks_visible": true
+      },
+      {
+        "slug": "health-status-transition",
+        "category": "status",
+        "task": "Monitor the health endpoint and decide whether it stayed available.",
+        "expected_decision": "Treat the 503 transition as an availability incident.",
+        "repetitive": true,
+        "input_records": 601,
+        "raw_tokens": 23747,
+        "qurtail_tokens": 397,
+        "token_reduction": 0.9832820987914263,
+        "required_blocks": 1,
+        "all_required_blocks_visible": true
+      },
+      {
+        "slug": "structured-permission-failure",
+        "category": "structured-error",
+        "task": "Monitor background synchronization and identify its failure detail.",
+        "expected_decision": "Fix the EACCES permission failure.",
+        "repetitive": true,
+        "input_records": 601,
+        "raw_tokens": 21623,
+        "qurtail_tokens": 399,
+        "token_reduction": 0.9815474263515701,
+        "required_blocks": 1,
+        "all_required_blocks_visible": true
+      },
+      {
+        "slug": "worker-traceback",
+        "category": "multiline",
+        "task": "Monitor the worker crash, identify its cause, and decide what to do before restarting it.",
+        "expected_decision": "Free disk space before restarting the worker.",
+        "repetitive": true,
+        "input_records": 604,
+        "raw_tokens": 19217,
+        "qurtail_tokens": 389,
+        "token_reduction": 0.9797575063745642,
+        "required_blocks": 1,
+        "all_required_blocks_visible": true
+      },
+      {
+        "slug": "resumed-pattern-after-incident",
+        "category": "resumed-pattern",
+        "task": "Monitor worker heartbeats, identify the incident, and decide whether successful heartbeats resumed.",
+        "expected_decision": "Investigate the refused connection and note that heartbeats resumed.",
+        "repetitive": true,
+        "input_records": 401,
+        "raw_tokens": 9707,
+        "qurtail_tokens": 398,
+        "token_reduction": 0.9589986607602761,
+        "required_blocks": 2,
+        "all_required_blocks_visible": true
+      },
+      {
+        "slug": "replication-lag-change",
+        "category": "numeric-change",
+        "task": "Monitor replication lag and decide whether it is safe.",
+        "expected_decision": "Escalate the 900-second replication lag.",
+        "repetitive": false,
+        "input_records": 3,
+        "raw_tokens": 331,
+        "qurtail_tokens": 331,
+        "token_reduction": 0.0,
+        "required_blocks": 1,
+        "all_required_blocks_visible": true
+      },
+      {
+        "slug": "malformed-records",
+        "category": "fail-open",
+        "task": "Monitor an unfamiliar source without losing uncertain evidence.",
+        "expected_decision": "Inspect the raw source before adding a recognizer.",
+        "repetitive": false,
+        "input_records": 5,
+        "raw_tokens": 336,
+        "qurtail_tokens": 336,
+        "token_reduction": 0.0,
+        "required_blocks": 5,
+        "all_required_blocks_visible": true
+      }
+    ],
+    "summary": {
+      "median_repetitive_token_reduction": 0.9797575063745642,
+      "maximum_nonrepetitive_token_inflation": -0.0
+    },
+    "logical_clock_replay": {
+      "source_duration_seconds": 31.0,
+      "wall_clock_sleep_seconds": 0.0,
+      "output": "INFO worker heartbeat\n. [1 similar in 30s]\n",
+      "expected_output": "INFO worker heartbeat\n. [1 similar in 30s]\n",
+      "passed": true
+    },
+    "gates": {
+      "all_required_blocks_visible": true,
+      "median_repetitive_token_reduction_at_least_80_percent": true,
+      "nonrepetitive_token_inflation_at_most_2_percent": true,
+      "logical_clock_summary_replay": true
+    },
+    "passed": true,
+    "tokenizer": {
+      "package": "tiktoken 0.13.0",
+      "encoding": "o200k_base"
+    }
+  },
+  "review": {
+    "independent_review_completed": true,
+    "material_findings_remaining": 0,
+    "remedied": "Oversized records clear reference history before the legacy adjacent fast matcher."
+  }
+}

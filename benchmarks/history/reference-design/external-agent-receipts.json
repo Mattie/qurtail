@@ -1,0 +1,163 @@
+{
+  "protocol": "Nine fresh blinded agents, one per case/arm; fixed 512-record natural episodes; same guidance, start with later poll; reader-ledger payload accounting. Rootly deliveries truncated by tools and all three runs excluded from correctness/cost comparisons despite matching answers. Emitted tokens are not billed or necessarily delivered tokens. No population-level inference.",
+  "receipts": [
+    {
+      "case": "rcaeval-payment",
+      "arm": "arm-a",
+      "answers": {
+        "conversion_container": "currencyservice",
+        "latest_conversion_timestamp": "2024-01-19T09:37:13Z",
+        "last_payment_transaction_id": "931246eb-acd4-4c1e-aafe-d29f326aab54"
+      },
+      "evidence": "Poll-2 records currencyservice conversion successes through 2024-01-19T09:37:13Z. Poll-1 records the checkoutservice payment transaction at 2024-01-19T09:37:09Z; neither poll contains a later payment transaction.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt",
+        "poll-1.txt"
+      ],
+      "delivery_complete": true
+    },
+    {
+      "case": "rcaeval-payment",
+      "arm": "arm-b",
+      "answers": {
+        "conversion_container": "currencyservice",
+        "latest_conversion_timestamp": "2024-01-19T09:37:13Z",
+        "last_payment_transaction_id": "931246eb-acd4-4c1e-aafe-d29f326aab54"
+      },
+      "evidence": "Poll 2 ends with currencyservice conversion successes at 2024-01-19T09:37:13Z, including three additional similar occurrences in 0s. Poll 1 records checkoutservice's payment transaction at 2024-01-19T09:37:09Z; neither poll contains a later payment transaction.",
+      "review_limitation": "Latest timestamp matches source, but three final adjacent event timestamps are hidden and raw evidence was not retrieved; exact latest timestamp recovery is unproven.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt",
+        "poll-1.txt"
+      ],
+      "delivery_complete": true
+    },
+    {
+      "case": "rcaeval-payment",
+      "arm": "arm-c",
+      "answers": {
+        "conversion_container": "currencyservice",
+        "latest_conversion_timestamp": "2024-01-19T09:37:13Z",
+        "last_payment_transaction_id": "931246eb-acd4-4c1e-aafe-d29f326aab54"
+      },
+      "evidence": "Poll 2 defines exemplar #42 as currencyservice conversion request successful and records its latest repeats at 2024-01-19T09:37:13Z. Poll 1 contains the checkoutservice payment transaction at 2024-01-19T09:37:09Z; neither poll contains a later payment transaction.",
+      "review_limitation": "Latest timestamp matches source, but three final adjacent event timestamps are hidden and raw evidence was not retrieved; exact latest timestamp recovery is unproven.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt",
+        "poll-1.txt"
+      ],
+      "delivery_complete": true
+    },
+    {
+      "case": "logdx-network",
+      "arm": "arm-a",
+      "answers": {
+        "failed_test": "tests/functional/test_truststore.py::test_no_truststore_can_install[GitHub]",
+        "remote_host": "github.com",
+        "http_status": 502,
+        "reruns": 3,
+        "final_exit_code": 1
+      },
+      "evidence": "Captured stderr reports github.com exhausted retries because of repeated HTTP 502 responses. The final test summary names the failed test and reports 3 reruns. The process completion reports exit code 1.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt"
+      ],
+      "delivery_complete": true
+    },
+    {
+      "case": "logdx-network",
+      "arm": "arm-b",
+      "answers": {
+        "failed_test": "tests/functional/test_truststore.py::test_no_truststore_can_install[GitHub]",
+        "remote_host": "github.com",
+        "http_status": 502,
+        "reruns": 3,
+        "final_exit_code": 1
+      },
+      "evidence": "The FAILED summary names the GitHub truststore installation test. Its captured stderr reports github.com exhausting retries due to too many 502 responses. The final test summary reports 3 rerun, and the process completed with exit code 1.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt"
+      ],
+      "delivery_complete": true
+    },
+    {
+      "case": "logdx-network",
+      "arm": "arm-c",
+      "answers": {
+        "failed_test": "tests/functional/test_truststore.py::test_no_truststore_can_install[GitHub]",
+        "remote_host": "github.com",
+        "http_status": 502,
+        "reruns": 3,
+        "final_exit_code": 1
+      },
+      "evidence": "Captured stderr reports exhausted retries against github.com caused by too many 502 responses. The final test summary names the failed test and reports 3 rerun; the process completion records exit code 1.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt"
+      ],
+      "delivery_complete": true
+    },
+    {
+      "case": "rootly-status",
+      "arm": "arm-a",
+      "answers": {
+        "status_codes": [
+          200,
+          301
+        ],
+        "last_status": 200,
+        "last_timestamp": "29/Jan/2025:16:34:38 +0000"
+      },
+      "evidence": "In poll-2, exact '/' requests show statuses 200 and 301. The last matching arrival is 52.167.144.228 requesting GET / HTTP/1.1 at 29/Jan/2025:16:34:38 +0000, returning 200. Requests containing query strings or other paths were excluded. raw.log was also requested, but its tool output was truncated.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt",
+        "raw.log"
+      ],
+      "delivery_complete": false
+    },
+    {
+      "case": "rootly-status",
+      "arm": "arm-b",
+      "answers": {
+        "status_codes": [
+          200,
+          301
+        ],
+        "last_status": 200,
+        "last_timestamp": "29/Jan/2025:16:34:38 +0000"
+      },
+      "evidence": "The 12 exact-root requests in poll-2 have statuses 200 and 301. The final matching request in arrival order is GET / HTTP/1.1 from 52.167.144.228, returning 200 at 29/Jan/2025:16:34:38 +0000. Query strings and other paths were excluded. Repeated the poll-2 read to recover evidence obscured by display truncation.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt",
+        "poll-2.txt"
+      ],
+      "delivery_complete": false
+    },
+    {
+      "case": "rootly-status",
+      "arm": "arm-c",
+      "answers": {
+        "status_codes": [
+          200,
+          301
+        ],
+        "last_status": 200,
+        "last_timestamp": "29/Jan/2025:16:34:38 +0000"
+      },
+      "evidence": "Poll-2 shows exact '/' requests returning 200 and 301. The last matching arrival is 52.167.144.228 requesting 'GET / HTTP/1.1' at 29/Jan/2025:16:34:38 +0000 with status 200. Query-string requests and other paths were excluded. The raw.log read was partially truncated.",
+      "files_read": [
+        "task.md",
+        "poll-2.txt",
+        "raw.log"
+      ],
+      "delivery_complete": false
+    }
+  ]
+}

@@ -1,0 +1,279 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-11",
+  "qurtail_sha256": "c7f05454d25d54626dd1eb25627a0c8fce2432781b84d58ec121ae544b4ec45b",
+  "platforms": {
+    "linux": {
+      "environment": "Ubuntu under WSL, project Python 3.12 environment",
+      "tests_run": 148,
+      "tests_skipped": 0,
+      "tests_passed": true,
+      "installed_smoke_passed": true,
+      "installed_smoke_modes": [
+        "default",
+        "--no-interleaving"
+      ],
+      "performance": {
+        "schema_version": 1,
+        "record_count": 500000,
+        "memory_record_count": 100000,
+        "record_width": 256,
+        "dot_every": 1,
+        "timing_trials": 3,
+        "timing_samples": [
+          {
+            "framing_seconds": 0.1586017010267824,
+            "framing_cpu_seconds": 0.1762148,
+            "qurtail_seconds": 0.8171177839976735,
+            "qurtail_cpu_seconds": 0.9079025999999999,
+            "framing_cpu_ratio": 5.152249413783632,
+            "first_record_seconds": 5.766196409240365e-05
+          },
+          {
+            "framing_seconds": 0.14256480400217697,
+            "framing_cpu_seconds": 0.15840470000000018,
+            "qurtail_seconds": 0.6859472399810329,
+            "qurtail_cpu_seconds": 0.7621584000000001,
+            "framing_cpu_ratio": 4.811463296227949,
+            "first_record_seconds": 4.641298437491059e-05
+          },
+          {
+            "framing_seconds": 0.1369666469981894,
+            "framing_cpu_seconds": 0.15216879999999966,
+            "qurtail_seconds": 0.6169568150071427,
+            "qurtail_cpu_seconds": 0.6855025999999995,
+            "framing_cpu_ratio": 4.504882735488491,
+            "first_record_seconds": 4.074297612532973e-05
+          }
+        ],
+        "framing_seconds": 0.14256480400217697,
+        "framing_cpu_seconds": 0.15840470000000018,
+        "qurtail_seconds": 0.6859472399810329,
+        "qurtail_cpu_seconds": 0.7621584000000001,
+        "total_framing_cpu_seconds": 0.48678829999999984,
+        "total_qurtail_cpu_seconds": 2.3555635999999995,
+        "records_per_second": 728919.0346677763,
+        "framing_cpu_ratio": 4.838989762079327,
+        "peak_additional_bytes": 1915241,
+        "first_record_seconds": 5.766196409240365e-05,
+        "gates": {
+          "at_least_50000_records_per_second": true,
+          "peak_additional_memory_below_64_mib": true,
+          "first_record_below_100_ms": true
+        },
+        "passed": true
+      }
+    },
+    "windows": {
+      "environment": "Native Windows, isolated Python 3.12 environment and freshly built wheel",
+      "tests_run": 148,
+      "tests_skipped": 6,
+      "tests_passed": true,
+      "installed_smoke_passed": true,
+      "installed_smoke_modes": [
+        "default",
+        "--no-interleaving"
+      ],
+      "performance": {
+        "schema_version": 1,
+        "record_count": 500000,
+        "memory_record_count": 100000,
+        "record_width": 256,
+        "dot_every": 1,
+        "timing_trials": 3,
+        "timing_samples": [
+          {
+            "framing_seconds": 0.37285779998637736,
+            "framing_cpu_seconds": 0.375,
+            "qurtail_seconds": 0.9103292999789119,
+            "qurtail_cpu_seconds": 0.875,
+            "framing_cpu_ratio": 2.3333333333333335,
+            "first_record_seconds": 5.0399976316839457e-05
+          },
+          {
+            "framing_seconds": 0.508765599981416,
+            "framing_cpu_seconds": 0.484375,
+            "qurtail_seconds": 1.1591925999964587,
+            "qurtail_cpu_seconds": 1.125,
+            "framing_cpu_ratio": 2.3225806451612905,
+            "first_record_seconds": 7.749994983896613e-05
+          },
+          {
+            "framing_seconds": 0.45466340001439676,
+            "framing_cpu_seconds": 0.421875,
+            "qurtail_seconds": 1.2900793999433517,
+            "qurtail_cpu_seconds": 1.28125,
+            "framing_cpu_ratio": 3.037037037037037,
+            "first_record_seconds": 3.7299992982298136e-05
+          }
+        ],
+        "framing_seconds": 0.45466340001439676,
+        "framing_cpu_seconds": 0.421875,
+        "qurtail_seconds": 1.1591925999964587,
+        "qurtail_cpu_seconds": 1.125,
+        "total_framing_cpu_seconds": 1.28125,
+        "total_qurtail_cpu_seconds": 3.28125,
+        "records_per_second": 431334.70658933424,
+        "framing_cpu_ratio": 2.5609756097560976,
+        "peak_additional_bytes": 1915233,
+        "first_record_seconds": 7.749994983896613e-05,
+        "gates": {
+          "at_least_50000_records_per_second": true,
+          "peak_additional_memory_below_64_mib": true,
+          "first_record_below_100_ms": true
+        },
+        "passed": true
+      }
+    },
+    "macos": {
+      "note": "Available in existing CI matrix; no push or workflow run performed.",
+      "tested": false
+    }
+  },
+  "heldout": {
+    "schema_version": 1,
+    "episodes": [
+      {
+        "slug": "cache-refresh-failure",
+        "category": "error",
+        "task": "Monitor cache refreshes and explain why the refresh stopped.",
+        "expected_decision": "Investigate the refused cache connection.",
+        "repetitive": true,
+        "interleaving": true,
+        "input_records": 601,
+        "raw_tokens": 14399,
+        "qurtail_tokens": 363,
+        "token_reduction": 0.9747899159663865,
+        "required_blocks": 1,
+        "all_required_blocks_visible": true,
+        "default_all_required_blocks_visible": true
+      },
+      {
+        "slug": "health-status-transition",
+        "category": "status",
+        "task": "Monitor the health endpoint and decide whether it stayed available.",
+        "expected_decision": "Treat the 503 transition as an availability incident.",
+        "repetitive": true,
+        "interleaving": true,
+        "input_records": 601,
+        "raw_tokens": 23747,
+        "qurtail_tokens": 397,
+        "token_reduction": 0.9832820987914263,
+        "required_blocks": 1,
+        "all_required_blocks_visible": true,
+        "default_all_required_blocks_visible": true
+      },
+      {
+        "slug": "structured-permission-failure",
+        "category": "structured-error",
+        "task": "Monitor background synchronization and identify its failure detail.",
+        "expected_decision": "Fix the EACCES permission failure.",
+        "repetitive": true,
+        "interleaving": true,
+        "input_records": 601,
+        "raw_tokens": 21623,
+        "qurtail_tokens": 399,
+        "token_reduction": 0.9815474263515701,
+        "required_blocks": 1,
+        "all_required_blocks_visible": true,
+        "default_all_required_blocks_visible": true
+      },
+      {
+        "slug": "worker-traceback",
+        "category": "multiline",
+        "task": "Monitor the worker crash, identify its cause, and decide what to do before restarting it.",
+        "expected_decision": "Free disk space before restarting the worker.",
+        "repetitive": true,
+        "interleaving": true,
+        "input_records": 604,
+        "raw_tokens": 19217,
+        "qurtail_tokens": 389,
+        "token_reduction": 0.9797575063745642,
+        "required_blocks": 1,
+        "all_required_blocks_visible": true,
+        "default_all_required_blocks_visible": true
+      },
+      {
+        "slug": "resumed-pattern-after-incident",
+        "category": "resumed-pattern",
+        "task": "Monitor worker heartbeats, identify the incident, and decide whether successful heartbeats resumed.",
+        "expected_decision": "Investigate the refused connection and note that heartbeats resumed.",
+        "repetitive": true,
+        "interleaving": false,
+        "input_records": 401,
+        "raw_tokens": 9712,
+        "qurtail_tokens": 403,
+        "token_reduction": 0.958504942339374,
+        "required_blocks": 2,
+        "all_required_blocks_visible": true,
+        "default_all_required_blocks_visible": false
+      },
+      {
+        "slug": "replication-lag-change",
+        "category": "numeric-change",
+        "task": "Monitor replication lag and decide whether it is safe.",
+        "expected_decision": "Escalate the 900-second replication lag.",
+        "repetitive": false,
+        "interleaving": true,
+        "input_records": 3,
+        "raw_tokens": 331,
+        "qurtail_tokens": 331,
+        "token_reduction": 0.0,
+        "required_blocks": 1,
+        "all_required_blocks_visible": true,
+        "default_all_required_blocks_visible": true
+      },
+      {
+        "slug": "malformed-records",
+        "category": "fail-open",
+        "task": "Monitor an unfamiliar source without losing uncertain evidence.",
+        "expected_decision": "Inspect the raw source before adding a recognizer.",
+        "repetitive": false,
+        "interleaving": true,
+        "input_records": 5,
+        "raw_tokens": 336,
+        "qurtail_tokens": 336,
+        "token_reduction": 0.0,
+        "required_blocks": 5,
+        "all_required_blocks_visible": true,
+        "default_all_required_blocks_visible": true
+      }
+    ],
+    "summary": {
+      "median_repetitive_token_reduction": 0.9797575063745642,
+      "maximum_nonrepetitive_token_inflation": -0.0
+    },
+    "logical_clock_replay": {
+      "source_duration_seconds": 31.0,
+      "wall_clock_sleep_seconds": 0.0,
+      "output": "INFO worker heartbeat\n. [1 similar in 30s]\n",
+      "expected_output": "INFO worker heartbeat\n. [1 similar in 30s]\n",
+      "passed": true
+    },
+    "gates": {
+      "all_required_blocks_visible_in_selected_modes": true,
+      "median_repetitive_token_reduction_at_least_80_percent": true,
+      "nonrepetitive_token_inflation_at_most_2_percent": true,
+      "logical_clock_summary_replay": true
+    },
+    "passed": true,
+    "tokenizer": {
+      "package": "tiktoken 0.13.0",
+      "encoding": "o200k_base"
+    }
+  },
+  "report_sha256": {
+    "benchmarks/interleaved-results.json": "600de71e4f47225021fd5e23545716e5787541501d6d3aa50823eba2118254c2",
+    "benchmarks/interleaved-agent-results.json": "6532b2c5722a1e4cad526ca410ddae8f8666afbcd496414dbacc662be26a4766",
+    "benchmarks/external-validation-results.json": "cb12eaf97beee9dfe0a98631f4636cf0a5dd2dd76ef2c457b118f3dcacdf7163",
+    "benchmarks/hdfs-full-results.json": "1dd8018a87dadc6cf536a8d766f619483bfef55f8d282921355f10038b63e5b2"
+  },
+  "review": {
+    "independent_review_completed": true,
+    "material_findings_remaining": 0,
+    "opt_out_compatibility": "Compared output and process return values after every record, tick, and finish for 1,000 deterministic varied streams against the retained pre-feature baseline; all matched.",
+    "accepted_limitation": "Default mixed counts can hide recurrence and recovery. The held-out recovery episode records default visibility failure and passes with --no-interleaving.",
+    "matcher_reuse_validation": "Independent review: 300 varied streams match pre-fix 622d61d at every record, tick, and finish in both modes; 600-pattern regression checks one compilation per retained pattern.",
+    "agent_fixture_equivalence": "Regenerated fixtures have identical task/evidence hashes and answer keys; original read ledgers and receipts were retained and rescored against the refreshed source metadata."
+  }
+}

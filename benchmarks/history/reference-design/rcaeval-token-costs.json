@@ -1,0 +1,186 @@
+{
+  "method": "Decode saved audited current transcripts; compare o200k_base tokens per LF-terminated anchor/reference with its original source record. Remaining delta against retained baseline is reported separately.",
+  "corpus_report_sha256": "74b687be985714b2a975c9bc67069c0db9225639d10c65738c2f860926c238ea",
+  "results": [
+    {
+      "case": "re2ob_checkoutservice_cpu_1",
+      "anchor_added_tokens": 127265,
+      "reference_token_delta": 83336,
+      "references_equal": 1653,
+      "references_costing_more": 64190,
+      "references_saving": 11116,
+      "actual_delta_vs_baseline": 210601,
+      "unattributed_delta": 0,
+      "examples": [
+        {
+          "source": "2024-01-15T21:47:06Z container=\"currencyservice\" conversion request successful",
+          "reference": "[qurtail repeat #15381] 2024-01-15T21:47:06Z",
+          "added_tokens": 1,
+          "occurrences": 23
+        },
+        {
+          "source": "2024-01-15T21:41:30Z container=\"frontend\" request started",
+          "reference": "[qurtail repeat #11690] 2024-01-15T21:41:30Z",
+          "added_tokens": 3,
+          "occurrences": 22
+        }
+      ]
+    },
+    {
+      "case": "re2ob_checkoutservice_delay_1",
+      "anchor_added_tokens": 138777,
+      "reference_token_delta": 87146,
+      "references_equal": 1774,
+      "references_saving": 12282,
+      "references_costing_more": 72169,
+      "actual_delta_vs_baseline": 225923,
+      "unattributed_delta": 0,
+      "examples": [
+        {
+          "source": "2024-01-19T12:13:37Z container=\"currencyservice\" conversion request successful",
+          "reference": "[qurtail repeat #7724] 2024-01-19T12:13:37Z",
+          "added_tokens": 1,
+          "occurrences": 26
+        },
+        {
+          "source": "2024-01-19T12:13:57Z container=\"currencyservice\" conversion request successful",
+          "reference": "[qurtail repeat #7933] 2024-01-19T12:13:57Z",
+          "added_tokens": 1,
+          "occurrences": 24
+        }
+      ]
+    },
+    {
+      "case": "re2ob_checkoutservice_socket_1",
+      "anchor_added_tokens": 136673,
+      "reference_token_delta": 87581,
+      "references_costing_more": 72161,
+      "references_equal": 1736,
+      "references_saving": 12198,
+      "actual_delta_vs_baseline": 224254,
+      "unattributed_delta": 0,
+      "examples": [
+        {
+          "source": "2024-01-19T09:27:47Z container=\"currencyservice\" conversion request successful",
+          "reference": "[qurtail repeat #10460] 2024-01-19T09:27:47Z",
+          "added_tokens": 1,
+          "occurrences": 28
+        },
+        {
+          "source": "2024-01-19T09:27:35Z container=\"currencyservice\" conversion request successful",
+          "reference": "[qurtail repeat #10313] 2024-01-19T09:27:35Z",
+          "added_tokens": 1,
+          "occurrences": 24
+        }
+      ]
+    },
+    {
+      "case": "re2ss_carts_cpu_1",
+      "anchor_added_tokens": 28345,
+      "reference_token_delta": -85937,
+      "references_saving": 1503,
+      "references_equal": 52,
+      "references_costing_more": 280,
+      "actual_delta_vs_baseline": -57592,
+      "unattributed_delta": 0,
+      "examples": [
+        {
+          "source": "2024-01-18T16:32:45Z container=\"front-end\" Sent cookies.",
+          "reference": "[qurtail repeat #266] 2024-01-18T16:32:45Z",
+          "added_tokens": 1,
+          "occurrences": 3
+        },
+        {
+          "source": "2024-01-18T16:38:24Z container=\"front-end\" Carts merged.",
+          "reference": "[qurtail repeat #1121] 2024-01-18T16:38:24Z",
+          "added_tokens": 1,
+          "occurrences": 3
+        }
+      ]
+    },
+    {
+      "case": "re2ss_carts_delay_1",
+      "anchor_added_tokens": 28657,
+      "reference_token_delta": -71961,
+      "references_saving": 1295,
+      "references_equal": 70,
+      "references_costing_more": 274,
+      "actual_delta_vs_baseline": -43304,
+      "unattributed_delta": 0,
+      "examples": [
+        {
+          "source": "2024-01-19T10:58:34Z container=\"front-end\" Sent cookies.",
+          "reference": "[qurtail repeat #25] 2024-01-19T10:58:34Z",
+          "added_tokens": 1,
+          "occurrences": 5
+        },
+        {
+          "source": "2024-01-19T11:16:33Z container=\"front-end\" Carts merged.",
+          "reference": "[qurtail repeat #2780] 2024-01-19T11:16:33Z",
+          "added_tokens": 1,
+          "occurrences": 4
+        }
+      ]
+    },
+    {
+      "case": "re2ss_carts_socket_1",
+      "anchor_added_tokens": 29257,
+      "reference_token_delta": -89735,
+      "references_saving": 1583,
+      "references_equal": 69,
+      "references_costing_more": 247,
+      "actual_delta_vs_baseline": -60478,
+      "unattributed_delta": 0,
+      "examples": [
+        {
+          "source": "2024-01-19T02:45:48Z container=\"front-end\" Sent cookies.",
+          "reference": "[qurtail repeat #331] 2024-01-19T02:45:48Z",
+          "added_tokens": 1,
+          "occurrences": 3
+        },
+        {
+          "source": "2024-01-19T02:47:45Z container=\"front-end\" Sent cookies.",
+          "reference": "[qurtail repeat #640] 2024-01-19T02:47:45Z",
+          "added_tokens": 1,
+          "occurrences": 3
+        }
+      ]
+    },
+    {
+      "case": "re2tt_ts-order-service_cpu_1",
+      "anchor_added_tokens": 3514,
+      "reference_token_delta": -7735,
+      "references_saving": 72,
+      "actual_delta_vs_baseline": -4221,
+      "unattributed_delta": 0,
+      "examples": []
+    },
+    {
+      "case": "re2tt_ts-order-service_delay_1",
+      "anchor_added_tokens": 2898,
+      "reference_token_delta": -7259,
+      "references_saving": 68,
+      "actual_delta_vs_baseline": -4361,
+      "unattributed_delta": 0,
+      "examples": []
+    },
+    {
+      "case": "re2tt_ts-order-service_socket_1",
+      "anchor_added_tokens": 3710,
+      "reference_token_delta": -10186,
+      "references_saving": 160,
+      "actual_delta_vs_baseline": -6476,
+      "unattributed_delta": 0,
+      "examples": []
+    }
+  ],
+  "totals": {
+    "anchor_added_tokens": 499096,
+    "reference_token_delta": -14750,
+    "references_costing_more": 209321,
+    "references_saving": 40277,
+    "references_equal": 5354,
+    "actual_delta_vs_baseline": 484346,
+    "unattributed_delta": 0
+  }
+}
