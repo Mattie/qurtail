@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,15 @@ version = "1.1.0"
 description = "Follow logs while compacting conservative repeated patterns"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { file = "LICENSE.md" }
+license = "MIT"
+license-files = ["LICENSE.md"]
+authors = [
+  { name = "Mattie Casper" },
+]
+
+[project.urls]
+Repository = "https://github.com/Mattie/qurtail"
+Issues = "https://github.com/Mattie/qurtail/issues"
 
 [project.scripts]
 qurtail = "qurtail:main"
