@@ -115,6 +115,26 @@ class ConfigurationTests(TelemetryTestCase):
         session.finish(0)
         self.assertFalse(telemetry_directory.exists())
 
+    def test_retention_limit_accepts_boundary_and_rejects_excess_without_touching_logs(self) -> None:
+        self.write_config('mode = "full"\nmax_files = 100\n')
+        telemetry.start_session(["qurtail"], "1.1.0").finish(0)
+        self.assertEqual(len(self.log_lines()), 2)
+
+        active = self.home / ".qurtail" / "telemetry" / "commands.log"
+        existing = active.read_bytes()
+        for max_files in (101, 1_000_000_000):
+            with self.subTest(max_files=max_files):
+                self.write_config(f'mode = "full"\nmax_files = {max_files}\nmax_file_bytes = 1\n')
+                # Fail before exercising rotation if this guard regresses.
+                self.assertIsNone(telemetry._load_config())
+                output = StringIO()
+                with redirect_stdout(output), self.assertRaises(SystemExit) as raised:
+                    qurtail.main(["--version"])
+                self.assertEqual(raised.exception.code, 0)
+                self.assertEqual(output.getvalue(), "qurtail 1.1.0\n")
+                self.assertEqual(active.read_bytes(), existing)
+                self.assertEqual(list(active.parent.glob("commands.log.*")), [])
+
     def test_home_and_start_write_failures_are_silent(self) -> None:
         with patch(
             "_qurtail_telemetry._home_directory",
@@ -267,6 +287,21 @@ class RecordAndLifecycleTests(TelemetryTestCase):
 
         self.assertEqual(status, 0)
         self.assertEqual(len(self.log_lines()), 1)
+
+    def test_finish_interrupt_preserves_the_child_exit_status(self) -> None:
+        self.write_config()
+        real_append = telemetry._append_event
+
+        def interrupt_finish(config: telemetry._TelemetryConfig, record: str) -> None:
+            if "event=FINISH " in record:
+                raise KeyboardInterrupt
+            real_append(config, record)
+
+        with patch("_qurtail_telemetry._append_event", side_effect=interrupt_finish):
+            status = qurtail.main(["run", "--", sys.executable, "-c", "raise SystemExit(7)"])
+        self.assertEqual(status, 7)
+        self.assertEqual(len(self.log_lines()), 1)
+        self.assertIsNotNone(START_RECORD.fullmatch(self.log_lines()[0]))
 
 
 class StorageTests(TelemetryTestCase):

@@ -17,6 +17,7 @@ from uuid import uuid4
 CONFIG_READ_LIMIT = 1024 * 1024
 DEFAULT_MAX_FILE_BYTES = 5 * 1024 * 1024
 DEFAULT_MAX_FILES = 5
+MAX_FILES = 100
 LOCK_RETRY_INTERVAL = 0.01
 LOCK_WAIT_SECONDS = 0.25
 
@@ -63,7 +64,7 @@ class TelemetrySession:
                 f"duration_ms={duration_ms}\n"
             )
             _append_event(self._config, record)
-        except Exception:
+        except (Exception, KeyboardInterrupt):
             return
 
 
@@ -132,6 +133,8 @@ def _load_config() -> _TelemetryConfig | None:
     max_file_bytes = telemetry.get("max_file_bytes", DEFAULT_MAX_FILE_BYTES)
     max_files = telemetry.get("max_files", DEFAULT_MAX_FILES)
     if not _positive_integer(max_file_bytes) or not _positive_integer(max_files):
+        return None
+    if max_files > MAX_FILES:
         return None
 
     return _TelemetryConfig(

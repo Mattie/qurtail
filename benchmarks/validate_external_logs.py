@@ -245,7 +245,11 @@ def main() -> int:
             f"{current['records']:,} records; {current['byte_reduction']:.2%} bytes; "
             f"{current['token_reduction']:.2%} tokens; {current['suppressed_records']:,} suppressed"
             if current["audit_passed"] else f"AUDIT FAILED: {current['error']}"), flush=True)
-    passed = all(view["audit_passed"] for case in results for view in case["views"].values())
+    audits_passed = all(view["audit_passed"] for case in results for view in case["views"].values())
+    opt_out_matches_baseline = all(
+        case["views"]["adjacent_only"]["output_sha256"] == case["views"]["baseline"]["output_sha256"]
+        for case in results)
+    passed = audits_passed and opt_out_matches_baseline
     report = {
         "schema_version": 1,
         "qurtail_sha256": hashlib.sha256((ROOT / "qurtail.py").read_bytes()).hexdigest(),
@@ -257,9 +261,9 @@ def main() -> int:
                       "scope": "sum of LF-terminated logical records; excludes agent/prompt/tool costs"},
         "pyarrow_version": pyarrow.__version__,
         "configuration": {"dot_every": 10, "clock": "constant zero, no live delays"},
-        "results": results, "all_protocol_audits_passed": passed,
-        "opt_out_matches_baseline": all(case["views"]["adjacent_only"]["output_sha256"] ==
-                                       case["views"]["baseline"]["output_sha256"] for case in results),
+        "results": results, "all_protocol_audits_passed": audits_passed,
+        "opt_out_matches_baseline": opt_out_matches_baseline,
+        "passed": passed,
     }
     args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     return 0 if passed else 1

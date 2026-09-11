@@ -376,7 +376,7 @@ def evaluate_dataset(
                     suppressed = tail.process(text)
                     qurtail_seconds += time.perf_counter() - qurtail_started
                     if suppressed and truth.unit == "line":
-                        # Counts and ordered references represent line occurrences. Stable
+                        # Counts represent suppressed line occurrences. Stable
                         # block, application, and instance identifiers need a full
                         # visible record before they count as retained evidence.
                         writer.units.update(units)

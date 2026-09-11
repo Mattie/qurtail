@@ -49,11 +49,11 @@ reasoning/output, and launcher instructions. This small evaluation supports corr
 with raw recovery; it does not establish aggregate agent token savings.
 
 The full 11,175,629-record HDFS replay retained all 16,838 available anomaly units and took
-220.2 seconds including baseline scans. Held-out monitoring gates passed in their recorded
+162.3 seconds including baseline scans. Held-out monitoring gates passed in their recorded
 modes with zero nonrepetitive token inflation. The recovery episode needs `--no-interleaving`;
-its default-mode visibility failure is retained explicitly. All 140 tests passed on Linux;
-Windows ran the same suite with five platform skips. Installed-command smoke checks for
-both modes and performance gates passed on both platforms.
+its default-mode visibility failure is retained explicitly. All 145 tests passed on Linux;
+Windows ran the same suite with four POSIX skips and two optional-tokenizer skips.
+Installed-command smoke checks for both modes and performance gates passed on both platforms.
 macOS remains unverified locally; the existing CI matrix includes it.
 
 ### Reproduce

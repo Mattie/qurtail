@@ -23,6 +23,8 @@ def score(cases_root: Path, receipts_path: Path) -> dict:
         pair = (receipt["case"], receipt["arm"])
         if pair not in expected_pairs or pair in seen:
             raise ValueError("unknown or duplicate case/arm receipt")
+        if receipt.get("output_truncated") is not False:
+            raise ValueError("receipt must confirm evidence delivery was not truncated")
         seen.add(pair)
         case = cases[pair[0]]
         arm = case["arms"][pair[1]]
@@ -31,11 +33,19 @@ def score(cases_root: Path, receipts_path: Path) -> dict:
         if [item["file"] for item in ledger] != receipt["files_read"]:
             raise ValueError("reported reads differ from the evidence-reader ledger")
         reads = []
-        for name in receipt["files_read"]:
+        for item in ledger:
+            name = item["file"]
             expected_hash = arm["files"][name]
             data = (cases_root / pair[0] / pair[1] / name).read_bytes()
-            if hashlib.sha256(data).hexdigest() != expected_hash:
-                raise ValueError("evidence file no longer matches evaluated fixture")
+            payload = f"--- {name} ---\n" + data.decode("utf-8")
+            if not payload.endswith("\n"):
+                payload += "\n"
+            encoded = payload.encode("utf-8")
+            if (hashlib.sha256(data).hexdigest() != expected_hash
+                    or item["file_sha256"] != expected_hash
+                    or item["payload_sha256"] != hashlib.sha256(encoded).hexdigest()
+                    or item["payload_bytes"] != len(encoded)):
+                raise ValueError("evidence or payload receipt changed")
             reads.append({"file": name, "sha256": expected_hash,
                           "tokens": len(encoding.encode(data.decode("utf-8"), disallowed_special=()))})
         results.append({**receipt, "view": arm["view"], "reads": reads,
@@ -51,6 +61,7 @@ def score(cases_root: Path, receipts_path: Path) -> dict:
         "fixture_manifest": manifest,
         "receipts_sha256": hashlib.sha256(receipts_path.read_bytes()).hexdigest(),
         "scorer_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "reader_sha256": hashlib.sha256(Path(__file__).with_name("read_external_evidence.py").read_bytes()).hexdigest(),
         "tokenizer": {"package": f"tiktoken {tiktoken.__version__}", "encoding": "o200k_base",
                       "scope": "sum of each whole task/evidence file read, including rereads"},
         "results": results,

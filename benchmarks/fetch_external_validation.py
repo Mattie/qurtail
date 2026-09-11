@@ -73,10 +73,14 @@ def rca_entries() -> list[dict]:
                 raise ValueError(f"selected case has no logs: {case}")
     # The MIT grant explicitly covers the datasets in this pinned README.
     source_revision = "bb48c5aa9a24f1d5fcc716bdd479ea2d63145c90"
-    for name in ("LICENSE", "README.md"):
+    metadata_hashes = {
+        "LICENSE": "9f2c6bb71f29569d5547e52b207bdf10743fbc1943fbe3b5ae200041f3d787e6",
+        "README.md": "3feb2831b49fef48364338a3202141b4206154b3bf59873263faf5f08ef9a1b0",
+    }
+    for name, digest in metadata_hashes.items():
         entries.append({"family": "rcaeval", "path": f"rcaeval/{name}",
                         "url": f"https://raw.githubusercontent.com/phamquiluan/RCAEval/{source_revision}/{name}",
-                        "revision": source_revision})
+                        "revision": source_revision, "sha256": digest})
     return entries
 
 

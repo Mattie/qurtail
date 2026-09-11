@@ -3,8 +3,8 @@
 Reviewed: 2026-09-09. Scope: the local 1.1.0 working tree, including existing uncommitted
 telemetry changes. No implementation changes were made during this review.
 
-Historical assessment: automatic interleaved references were subsequently implemented.
-See [the behavior](interleaved.md) and [fresh evaluation](../benchmarks/README.md#automatic-interleaved-references).
+Historical assessment: shared dots/counts for interleaved repetition were subsequently implemented.
+See [the behavior](interleaved.md) and [fresh evaluation](../benchmarks/README.md#interleaved-dots-and-counts).
 
 ## Assessment
 

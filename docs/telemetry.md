@@ -13,7 +13,7 @@ max_file_bytes = 5242880
 max_files = 5
 ```
 
-If the telemetry section is absent, or if `mode = "off"`, logging is disabled. Qurtail reads at most 1 MiB from the config before it parses command arguments. `max_file_bytes` defaults to 5 MiB. `max_files` defaults to five and counts the active log along with its numbered archives. Both limits must be positive integers.
+If the telemetry section is absent, or if `mode = "off"`, logging is disabled. Qurtail reads at most 1 MiB from the config before it parses command arguments. `max_file_bytes` defaults to 5 MiB. `max_files` defaults to five and counts the active log along with its numbered archives. Both limits must be positive integers, and `max_files` must be at most 100 to bound rotation work.
 
 Malformed TOML, an unsupported mode, invalid limits, an unresolved home directory, or a filesystem failure disables telemetry for that invocation. Qurtail doesn't print a warning when this happens. Other sections and fields remain available for future configuration.
 

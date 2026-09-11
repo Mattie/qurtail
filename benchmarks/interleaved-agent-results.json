@@ -111,7 +111,8 @@
     ]
   },
   "receipts_sha256": "5b5cb29e0ca0dac9bbe8bc8b379013c9ffd9ccfc3e9b36ba0975f1ffc3f422a9",
-  "scorer_sha256": "f540dabb45ed35094d2c47ffd75269f0cbf201b48be0f23ffb2906929af9f450",
+  "scorer_sha256": "1ed061184c873ab1ba7c972a4f4391e361c16e01eb10e1f5b4c1d72db6cb2108",
+  "reader_sha256": "ecf237f08a9a4bed1c65d1c20763379c81b72255afb92c0543d372bb82cfb45b",
   "tokenizer": {
     "package": "tiktoken 0.13.0",
     "encoding": "o200k_base",

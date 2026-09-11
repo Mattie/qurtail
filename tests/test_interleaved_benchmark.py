@@ -1,6 +1,7 @@
 """Ensure dot/count audits reject unknown patterns and incorrect accounting."""
 
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import tempfile
@@ -9,6 +10,7 @@ import unittest
 from benchmarks.run_interleaved import TranscriptAudit
 from benchmarks.run_large_corpus import CountingWriter
 from benchmarks.prepare_interleaved_agent_cases import prepare
+from benchmarks.read_external_evidence import read_evidence
 
 
 A = "2026-09-10T12:00:00Z INFO service-a cache refresh completed"
@@ -98,7 +100,8 @@ class RetainedEvaluationTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         report = json.loads((root / "benchmarks/interleaved-agent-results.json").read_text())
         for field, path in (("receipts_sha256", "benchmarks/interleaved-agent-receipts.json"),
-                            ("scorer_sha256", "benchmarks/score_interleaved_agents.py")):
+                            ("scorer_sha256", "benchmarks/score_interleaved_agents.py"),
+                            ("reader_sha256", "benchmarks/read_external_evidence.py")):
             self.assertEqual(report[field], hashlib.sha256((root / path).read_bytes()).hexdigest())
         with tempfile.TemporaryDirectory() as directory:
             manifest = prepare(Path(directory))
@@ -112,6 +115,49 @@ class RetainedEvaluationTests(unittest.TestCase):
             self.assertEqual(report["total_task_and_evidence_tokens"][view],
                              sum(r["task_and_evidence_tokens"] for r in report["results"] if r["view"] == view))
         self.assertTrue(report["passed"])
+
+    @unittest.skipUnless(importlib.util.find_spec("tiktoken"), "benchmark tokenizer optional")
+    def test_scorer_checks_each_read_receipt_and_rejects_truncation(self) -> None:
+        from benchmarks.score_interleaved_agents import score
+        import tiktoken
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            data = b"Repeated evidence without final newline"
+            arms, receipts = {}, []
+            for arm, view in (("a", "raw"), ("b", "compact")):
+                folder = root / "case" / arm
+                folder.mkdir(parents=True)
+                (folder / "task.md").write_bytes(data)
+                read_evidence(folder, ["task.md", "task.md"])
+                arms[arm] = {"view": view, "files": {"task.md": hashlib.sha256(data).hexdigest()}}
+                receipts.append({"case": "case", "arm": arm, "answers": {"ok": True},
+                                 "files_read": ["task.md", "task.md"], "output_truncated": False})
+            (root / "manifest.json").write_text(json.dumps({"cases": [
+                {"id": "case", "expected": {"ok": True}, "arms": arms}]}))
+            receipt_path = root / "receipts.json"
+            receipt_path.write_text(json.dumps({"protocol": "test", "receipts": receipts}))
+            report = score(root, receipt_path)
+            expected_tokens = 2 * len(tiktoken.get_encoding("o200k_base").encode(data.decode()))
+            self.assertEqual(report["total_task_and_evidence_tokens"],
+                             {"raw": expected_tokens, "compact": expected_tokens})
+            self.assertTrue(report["passed"])
+
+            ledger_path = root / "case/a/reads.jsonl"
+            original = ledger_path.read_text()
+            for field, value in (("file_sha256", "wrong"), ("payload_sha256", "wrong"),
+                                 ("payload_bytes", 0)):
+                with self.subTest(field=field):
+                    entries = [json.loads(line) for line in original.splitlines()]
+                    entries[1][field] = value
+                    ledger_path.write_text("".join(json.dumps(item) + "\n" for item in entries))
+                    with self.assertRaisesRegex(ValueError, "payload receipt changed"):
+                        score(root, receipt_path)
+            ledger_path.write_text(original)
+            receipts[1]["output_truncated"] = True
+            receipt_path.write_text(json.dumps({"protocol": "test", "receipts": receipts}))
+            with self.assertRaisesRegex(ValueError, "not truncated"):
+                score(root, receipt_path)
 
 
 if __name__ == "__main__":

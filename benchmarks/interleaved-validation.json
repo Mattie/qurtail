@@ -5,7 +5,7 @@
   "platforms": {
     "linux": {
       "environment": "Ubuntu under WSL, project Python 3.12 environment",
-      "tests_run": 140,
+      "tests_run": 145,
       "tests_skipped": 0,
       "tests_passed": true,
       "installed_smoke_passed": true,
@@ -66,8 +66,8 @@
     },
     "windows": {
       "environment": "Native Windows, isolated Python 3.12 environment and freshly built wheel",
-      "tests_run": 140,
-      "tests_skipped": 5,
+      "tests_run": 145,
+      "tests_skipped": 6,
       "tests_passed": true,
       "installed_smoke_passed": true,
       "installed_smoke_modes": [
@@ -263,10 +263,10 @@
     }
   },
   "report_sha256": {
-    "benchmarks/interleaved-results.json": "0b7aeb0bfbfb70d5ff16b4c56b2d4590aa47c84e14cb699b3bc7869221b93e6b",
-    "benchmarks/interleaved-agent-results.json": "6858fa5e8e493b39a96b926be6f89633b90bcffb4e52c2c71795f536504fe3c8",
-    "benchmarks/external-validation-results.json": "8517ac189e88b785f407be8cdb3911fa69d5a07b0c24ae77ac7c20242aa9aad8",
-    "benchmarks/hdfs-full-results.json": "b98c618045bc7df10790961c5f0250964d63518d1c65f856240a7987c96a779b"
+    "benchmarks/interleaved-results.json": "682c8f041b006e03cfdccdd7d75fcd965fd7e62a5e6b900668944cd5a319a563",
+    "benchmarks/interleaved-agent-results.json": "eb656a47990dfee4a09fad2884f919bb51f34ef2eeaee6ddf1cfb03a98d59e0e",
+    "benchmarks/external-validation-results.json": "eda9a5c0804afa3c0d1501ac6ebe5cc5a04333441dc5537c198d91767ca98560",
+    "benchmarks/hdfs-full-results.json": "405a259c6d0c8c1915dd587212ea856648a294aad96000b16cb54be7872edf7c"
   },
   "review": {
     "independent_review_completed": true,

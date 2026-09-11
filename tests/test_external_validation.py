@@ -2,15 +2,21 @@
 
 import hashlib
 import importlib.util
+from contextlib import redirect_stdout
+from io import StringIO
 import json
 from pathlib import Path
+import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from benchmarks.validate_external_logs import (
-    EvidenceAudit, physical_records, render_rca_rows, signal_checks,
+    EvidenceAudit, main, physical_records, render_rca_rows, signal_checks,
 )
 from benchmarks.read_external_evidence import read_evidence
+from benchmarks.fetch_external_validation import fetch_one, rca_entries
 
 
 class ExternalValidationTests(unittest.TestCase):
@@ -20,6 +26,24 @@ class ExternalValidationTests(unittest.TestCase):
         self.assertEqual(physical_records(b"a\rb\n\nlast\r\n"), ["a\rb", "", "last"])
         self.assertEqual(physical_records(b"a\v\fb"), ["a\v\fb"])
         self.assertEqual(physical_records(b""), [])
+
+    def test_rca_metadata_rejects_tampered_cached_files(self):
+        def table_metadata(url):
+            case = url.rsplit("/", 1)[1].split("?", 1)[0]
+            return [{"path": f"{case}/logs.parquet", "size": 1, "oid": "fixture"}]
+
+        with patch("benchmarks.fetch_external_validation.read_json", side_effect=table_metadata):
+            entries = [entry for entry in rca_entries()
+                       if entry["path"] in ("rcaeval/LICENSE", "rcaeval/README.md")]
+        self.assertEqual(len(entries), 2)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "rcaeval").mkdir()
+            for entry in entries:
+                with self.subTest(path=entry["path"]):
+                    (root / entry["path"]).write_bytes(b"tampered metadata")
+                    with self.assertRaisesRegex(ValueError, "SHA-256 mismatch"):
+                        fetch_one(root, entry)
 
     def test_rca_view_keeps_metadata_embedded_times_newlines_and_null_rows(self):
         records, metadata = render_rca_rows([
@@ -79,8 +103,44 @@ class ExternalValidationTests(unittest.TestCase):
         self.assertEqual(len(actual), len(report["results"]))
         self.assertTrue(report["all_protocol_audits_passed"])
         self.assertTrue(report["opt_out_matches_baseline"])
+        self.assertTrue(report["passed"])
         self.assertTrue(all(view["audit_passed"] for case in report["results"]
                             for view in case["views"].values()))
+
+    def test_cli_rejects_opt_out_byte_difference_even_when_all_audits_pass(self):
+        # Token counts and Parquet metadata do not affect this text-only exit gate.
+        packages = {
+            "tiktoken": SimpleNamespace(__version__="test", get_encoding=lambda name:
+                                       SimpleNamespace(encode=lambda text, **kwargs: text)),
+            "pyarrow": SimpleNamespace(__version__="test"),
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            data = b"A\nA\nA\n"
+            (root / "input.log").write_bytes(data)
+            manifest = root / "manifest.json"
+            manifest.write_text(json.dumps({"files": [{"family": "rootly",
+                "path": "input.log", "sha256": hashlib.sha256(data).hexdigest()}]}))
+            output = root / "report.json"
+            for density, expected_status in ((10, 0), (1, 1)):
+                with self.subTest(dot_every=density):
+                    # Both baselines account for all records; only dot density differs.
+                    baseline = root / f"baseline_{density}.py"
+                    baseline.write_text(
+                        "from qurtail import _StreamReducer as Reducer\n"
+                        "class _StreamReducer(Reducer):\n"
+                        "    def __init__(self, output, **kwargs):\n"
+                        f"        kwargs['dot_every'] = {density}\n"
+                        "        super().__init__(output, interleaving=False, **kwargs)\n")
+                    argv = ["validate", "--root", str(root), "--manifest", str(manifest),
+                            "--baseline-source", str(baseline), "--output", str(output)]
+                    with patch.dict(sys.modules, packages), patch.object(sys, "argv", argv), redirect_stdout(StringIO()):
+                        status = main()
+                    report = json.loads(output.read_text())
+                    self.assertTrue(report["all_protocol_audits_passed"])
+                    self.assertEqual(report["opt_out_matches_baseline"], expected_status == 0)
+                    self.assertEqual(report["passed"], expected_status == 0)
+                    self.assertEqual(status, expected_status)
 
     @unittest.skipUnless(importlib.util.find_spec("tiktoken"), "benchmark tokenizer optional")
     def test_payload_scoring_counts_rereads_rejects_tampering_and_excludes_truncation(self):
